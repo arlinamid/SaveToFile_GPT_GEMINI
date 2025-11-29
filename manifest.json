@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ChatGPT, Gemini & Claude Beszélgetés Mentő",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "Menti a ChatGPT, Gemini és Claude beszélgetéseket MD és DOCX formátumban",
   "permissions": [
     "activeTab",
