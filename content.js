@@ -66,13 +66,26 @@ function domToMarkdown(node) {
 }
 
 // Detektálja, hogy ChatGPT vagy Gemini oldalon vagyunk-e
+// Detect which platform we're on
 function detectPlatform() {
+    const url = window.location.href;
     const hostname = window.location.hostname;
-    if (hostname.includes('chatgpt.com') || hostname.includes('chat.openai.com')) {
+    
+    console.log('Platform detection - URL:', url);
+    console.log('Platform detection - Hostname:', hostname);
+    
+    if (url.includes('chatgpt.com') || url.includes('chat.openai.com') || hostname.includes('chatgpt') || hostname.includes('openai')) {
+        console.log('Detected platform: chatgpt');
         return 'chatgpt';
-    } else if (hostname.includes('gemini.google.com')) {
+    } else if (url.includes('gemini.google.com') || hostname.includes('gemini')) {
+        console.log('Detected platform: gemini');
         return 'gemini';
+    } else if (url.includes('claude.ai') || hostname.includes('claude') || hostname === 'claude.ai') {
+        console.log('Detected platform: claude');
+        return 'claude';
     }
+    
+    console.log('Platform detection failed - returning null');
     return null;
 }
 
