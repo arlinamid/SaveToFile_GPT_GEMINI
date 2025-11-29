@@ -424,5 +424,5 @@ const platform = detectPlatform();
 if (platform) {
     console.log(`ChatGPT, Gemini & Claude Mentő bővítmény betöltve - Platform: ${platform}`);
 } else {
-    console.log(`ChatGPT, Gemini & Claude Mentő bővítmény betöltve - Platform: ismeretlen (URL: ${window.location.href})`);
+    console.log(`ChatGPT, Gemini & Claude Mentő bővítmény betöltve - Platform: ismeretlen (URL: ${window.location.href}, Hostname: ${window.location.hostname})`);
 }
