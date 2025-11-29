@@ -60,7 +60,12 @@ function domToMarkdown(node) {
         case 'TABLE': return `\n${content}\n`; 
         case 'TR': return `| ${content} |\n`;
         case 'TH': case 'TD': return `${content} | `;
-        case 'DIV': return `${content}\n`;
+        case 'DIV': 
+            // Ha a div-nek nincs gyereke, vagy csak szöveg van benne, ne adjunk hozzá extra sortörést
+            if (node.childNodes.length === 0 || (node.childNodes.length === 1 && node.childNodes[0].nodeType === 3)) {
+                return content;
+            }
+            return `${content}\n`;
         default: return content;
     }
 }
