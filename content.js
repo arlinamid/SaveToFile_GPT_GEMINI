@@ -128,28 +128,57 @@ function collectChatGPTConversation() {
             role = "Felhasználó";
             const contentDiv = article.querySelector('.whitespace-pre-wrap');
             if (contentDiv) {
-                messageText = contentDiv.innerText;
+                // Próbáljuk meg markdown formátumban, hogy megőrizzük a formázást
+                messageText = domToMarkdown(contentDiv);
+                // Ha üres, akkor sima szöveg
+                if (!messageText.trim()) {
+                    messageText = contentDiv.innerText;
+                }
                 messageHtml = contentDiv.innerHTML;
             }
         } else if (turn === 'assistant') {
             role = "ChatGPT";
             const contentDiv = article.querySelector('.markdown');
             if (contentDiv) {
+                // Először az egész markdown div-et konvertáljuk (kezeli a beágyazott tag-eket)
                 messageText = domToMarkdown(contentDiv);
+                // Ha üres, próbáljuk meg más módszerekkel
+                if (!messageText.trim()) {
+                    // Keressük az összes markdown elemet
+                    const markdownElements = contentDiv.querySelectorAll('p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, pre, code');
+                    if (markdownElements.length > 0) {
+                        messageText = '';
+                        markdownElements.forEach(el => {
+                            const converted = domToMarkdown(el);
+                            if (converted.trim()) {
+                                messageText += converted;
+                            }
+                        });
+                    } else {
+                        // Végül: teljes szöveg
+                        messageText = contentDiv.textContent.trim();
+                    }
+                }
                 messageHtml = contentDiv.innerHTML;
             }
         }
         
-        if (!messageText) {
-            messageText = article.innerText;
+        // Fallback: ha még mindig nincs szöveg, az egész article-t próbáljuk
+        if (!messageText.trim()) {
+            messageText = domToMarkdown(article);
+            if (!messageText.trim()) {
+                messageText = article.innerText;
+            }
             messageHtml = article.innerHTML;
         }
         
-        messages.push({
-            role: role,
-            text: messageText,
-            html: messageHtml
-        });
+        if (messageText.trim()) {
+            messages.push({
+                role: role,
+                text: messageText.trim(),
+                html: messageHtml
+            });
+        }
     });
     
     return {
@@ -173,12 +202,27 @@ function collectGeminiConversation() {
         // Felhasználó kérdése (user-query)
         const userQuery = container.querySelector('user-query');
         if (userQuery) {
-            // Kérdés szövegének összegyűjtése
-            const queryLines = userQuery.querySelectorAll('.query-text-line');
-            let queryText = '';
-            queryLines.forEach(line => {
-                queryText += line.textContent.trim() + '\n';
-            });
+            // Próbáljuk meg markdown formátumban, hogy megőrizzük a formázást
+            let queryText = domToMarkdown(userQuery);
+            
+            // Ha üres, próbáljuk meg a query-text-line elemeket
+            if (!queryText.trim()) {
+                const queryLines = userQuery.querySelectorAll('.query-text-line');
+                if (queryLines.length > 0) {
+                    queryText = '';
+                    queryLines.forEach(line => {
+                        const converted = domToMarkdown(line);
+                        if (converted.trim()) {
+                            queryText += converted;
+                        } else {
+                            queryText += line.textContent.trim() + '\n';
+                        }
+                    });
+                } else {
+                    // Végül: teljes szöveg
+                    queryText = userQuery.textContent.trim();
+                }
+            }
             
             if (queryText.trim()) {
                 messages.push({
@@ -192,17 +236,37 @@ function collectGeminiConversation() {
         // Gemini válasza (model-response)
         const modelResponse = container.querySelector('model-response');
         if (modelResponse) {
-            // Válasz szövegének gyűjtése
-            const messageContent = modelResponse.querySelector('message-content .markdown');
+            // Először próbáljuk meg az egész message-content-et markdown-ra konvertálni
+            const messageContent = modelResponse.querySelector('message-content');
             let responseText = '';
             
             if (messageContent) {
+                // Először az egész message-content-et konvertáljuk (kezeli a beágyazott tag-eket)
                 responseText = domToMarkdown(messageContent);
-            } else {
-                // Fallback: ha nincs markdown osztály, próbáljuk az egész message-content-et
-                const content = modelResponse.querySelector('message-content');
-                if (content) {
-                    responseText = content.innerText;
+                
+                // Ha üres, próbáljuk meg a .markdown elemet
+                if (!responseText.trim()) {
+                    const markdownDiv = messageContent.querySelector('.markdown');
+                    if (markdownDiv) {
+                        responseText = domToMarkdown(markdownDiv);
+                    }
+                }
+                
+                // Ha még mindig üres, próbáljuk meg a markdown elemeket
+                if (!responseText.trim()) {
+                    const markdownElements = messageContent.querySelectorAll('p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, pre, code');
+                    if (markdownElements.length > 0) {
+                        responseText = '';
+                        markdownElements.forEach(el => {
+                            const converted = domToMarkdown(el);
+                            if (converted.trim()) {
+                                responseText += converted;
+                            }
+                        });
+                    } else {
+                        // Végül: teljes szöveg
+                        responseText = messageContent.textContent.trim();
+                    }
                 }
             }
             
