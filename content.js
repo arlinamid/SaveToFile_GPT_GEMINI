@@ -235,19 +235,30 @@ function collectClaudeConversation() {
             if (markdownContent) {
                 responseText = domToMarkdown(markdownContent);
             } else {
-                // Ha nincs markdown konténer, próbáljuk az egész válasz szövegét
-                // Keresünk minden szöveges tartalmat a font-claude-response-ben
-                const textElements = claudeResponse.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote, code, pre');
-                if (textElements.length > 0) {
-                    textElements.forEach(el => {
-                        const text = el.textContent.trim();
-                        if (text) {
-                            responseText += text + '\n\n';
+                // Ha nincs markdown konténer, próbáljuk az egész válasz szövegét markdown formátumban
+                // Először keressük az összes standard-markdown vagy progressive-markdown konténert
+                const allMarkdown = claudeResponse.querySelectorAll('.standard-markdown, .progressive-markdown');
+                if (allMarkdown.length > 0) {
+                    allMarkdown.forEach(md => {
+                        const converted = domToMarkdown(md);
+                        if (converted.trim()) {
+                            responseText += converted + '\n\n';
                         }
                     });
                 } else {
-                    // Fallback: teljes válasz szöveg
-                    responseText = claudeResponse.textContent.trim();
+                    // Keresünk minden szöveges elemet és konvertáljuk markdown-ra (formázás megőrzésével)
+                    const textElements = claudeResponse.querySelectorAll('p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, code, pre');
+                    if (textElements.length > 0) {
+                        textElements.forEach(el => {
+                            const converted = domToMarkdown(el);
+                            if (converted.trim()) {
+                                responseText += converted;
+                            }
+                        });
+                    } else {
+                        // Fallback: teljes válasz szöveg (formázás nélkül)
+                        responseText = claudeResponse.textContent.trim();
+                    }
                 }
             }
             
@@ -343,17 +354,29 @@ function collectClaudeConversation() {
             if (markdownContent) {
                 responseText = domToMarkdown(markdownContent);
             } else {
-                // Keresünk minden szöveges elemet
-                const textElements = response.querySelectorAll('p.font-claude-response-body, h1, h2, h3, h4, h5, h6, li, blockquote, .standard-markdown p, .progressive-markdown p');
-                if (textElements.length > 0) {
-                    textElements.forEach(el => {
-                        const text = el.textContent.trim();
-                        if (text) {
-                            responseText += text + '\n\n';
+                // Keresünk minden standard-markdown vagy progressive-markdown konténert
+                const allMarkdown = response.querySelectorAll('.standard-markdown, .progressive-markdown');
+                if (allMarkdown.length > 0) {
+                    allMarkdown.forEach(md => {
+                        const converted = domToMarkdown(md);
+                        if (converted.trim()) {
+                            responseText += converted + '\n\n';
                         }
                     });
                 } else {
-                    responseText = response.textContent.trim();
+                    // Keresünk minden szöveges elemet és konvertáljuk markdown-ra (formázás megőrzésével)
+                    const textElements = response.querySelectorAll('p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, code, pre');
+                    if (textElements.length > 0) {
+                        textElements.forEach(el => {
+                            const converted = domToMarkdown(el);
+                            if (converted.trim()) {
+                                responseText += converted;
+                            }
+                        });
+                    } else {
+                        // Fallback: teljes válasz szöveg (formázás nélkül)
+                        responseText = response.textContent.trim();
+                    }
                 }
             }
             
@@ -393,16 +416,29 @@ function collectClaudeConversation() {
                 if (markdownContent) {
                     responseText = domToMarkdown(markdownContent);
                 } else {
-                    const textElements = claudeResponse.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote');
-                    if (textElements.length > 0) {
-                        textElements.forEach(el => {
-                            const text = el.textContent.trim();
-                            if (text) {
-                                responseText += text + '\n\n';
+                    // Keresünk minden standard-markdown vagy progressive-markdown konténert
+                    const allMarkdown = claudeResponse.querySelectorAll('.standard-markdown, .progressive-markdown');
+                    if (allMarkdown.length > 0) {
+                        allMarkdown.forEach(md => {
+                            const converted = domToMarkdown(md);
+                            if (converted.trim()) {
+                                responseText += converted + '\n\n';
                             }
                         });
                     } else {
-                        responseText = claudeResponse.textContent.trim();
+                        // Keresünk szöveges elemeket és konvertáljuk markdown-ra (formázás megőrzésével)
+                        const textElements = claudeResponse.querySelectorAll('p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote');
+                        if (textElements.length > 0) {
+                            textElements.forEach(el => {
+                                const converted = domToMarkdown(el);
+                                if (converted.trim()) {
+                                    responseText += converted;
+                                }
+                            });
+                        } else {
+                            // Fallback: teljes válasz szöveg (formázás nélkül)
+                            responseText = claudeResponse.textContent.trim();
+                        }
                     }
                 }
                 
