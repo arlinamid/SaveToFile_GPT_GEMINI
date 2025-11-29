@@ -25,7 +25,8 @@ async function getConversationData() {
     
     if (!tab.url.includes('chatgpt.com') && 
         !tab.url.includes('chat.openai.com') && 
-        !tab.url.includes('gemini.google.com')) {
+        !tab.url.includes('gemini.google.com') &&
+        !tab.url.includes('claude.ai')) {
         showStatusI18n('status_error', 'error');
         return null;
     }

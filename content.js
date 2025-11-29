@@ -1,4 +1,4 @@
-// Content script - ChatGPT és Gemini beszélgetések gyűjtése
+// Content script - ChatGPT, Gemini és Claude beszélgetések gyűjtése
 
 // HTML -> Markdown konvertáló segédfüggvény
 function domToMarkdown(node) {
@@ -190,6 +190,100 @@ function collectGeminiConversation() {
     };
 }
 
+// Claude beszélgetés gyűjtése
+function collectClaudeConversation() {
+    const messages = [];
+    
+    // Claude felhasználói üzenetek: .group.relative.inline-flex elemeiben
+    const userMessages = document.querySelectorAll('[data-testid="user-message"]');
+    const assistantContainers = document.querySelectorAll('[data-is-streaming], .font-claude-response');
+    
+    // Összegyűjtjük az összes beszélgetési blokkot időrendi sorrendben
+    const conversationBlocks = document.querySelectorAll('.relative.w-full.min-h-full > .mx-auto > .flex-1 > div');
+    
+    conversationBlocks.forEach((block) => {
+        // Felhasználói üzenet keresése
+        const userMsg = block.querySelector('[data-testid="user-message"]');
+        if (userMsg) {
+            const userText = userMsg.textContent.trim();
+            if (userText) {
+                messages.push({
+                    role: 'Felhasználó',
+                    text: userText,
+                    html: userMsg.innerHTML
+                });
+            }
+        }
+        
+        // Claude válasz keresése
+        const claudeResponse = block.querySelector('.font-claude-response');
+        if (claudeResponse) {
+            // Standard markdown tartalom
+            const markdownContent = claudeResponse.querySelector('.standard-markdown, .progressive-markdown');
+            let responseText = '';
+            
+            if (markdownContent) {
+                responseText = domToMarkdown(markdownContent);
+            } else {
+                // Fallback: teljes válasz szöveg
+                responseText = claudeResponse.textContent.trim();
+            }
+            
+            if (responseText) {
+                messages.push({
+                    role: 'Claude',
+                    text: responseText,
+                    html: claudeResponse.innerHTML
+                });
+            }
+        }
+    });
+    
+    // Ha nem találtunk blokkokat, próbáljuk az egyszerűbb megközelítést
+    if (messages.length === 0) {
+        // Felhasználói üzenetek
+        userMessages.forEach((userMsg) => {
+            const userText = userMsg.textContent.trim();
+            if (userText) {
+                messages.push({
+                    role: 'Felhasználó',
+                    text: userText,
+                    html: userMsg.innerHTML
+                });
+            }
+        });
+        
+        // Claude válaszok
+        document.querySelectorAll('.font-claude-response').forEach((response) => {
+            const markdownContent = response.querySelector('.standard-markdown, .progressive-markdown');
+            let responseText = '';
+            
+            if (markdownContent) {
+                responseText = domToMarkdown(markdownContent);
+            } else {
+                responseText = response.textContent.trim();
+            }
+            
+            if (responseText) {
+                messages.push({
+                    role: 'Claude',
+                    text: responseText,
+                    html: response.innerHTML
+                });
+            }
+        });
+    }
+    
+    if (messages.length === 0) {
+        return null;
+    }
+    
+    return {
+        platform: 'Claude',
+        messages: messages
+    };
+}
+
 // Beszélgetés adatok gyűjtése (univerzális)
 function collectConversation() {
     const platform = detectPlatform();
@@ -200,6 +294,8 @@ function collectConversation() {
         data = collectChatGPTConversation();
     } else if (platform === 'gemini') {
         data = collectGeminiConversation();
+    } else if (platform === 'claude') {
+        data = collectClaudeConversation();
     }
     
     if (!data || !data.messages || data.messages.length === 0) {
@@ -224,4 +320,4 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 const platform = detectPlatform();
-console.log(`ChatGPT & Gemini Mentő bővítmény betöltve - Platform: ${platform || 'ismeretlen'}`);
+console.log(`ChatGPT, Gemini & Claude Mentő bővítmény betöltve - Platform: ${platform || 'ismeretlen'}`);
