@@ -6,7 +6,7 @@ const translations = {
         tab_about: 'About',
         
         // Export tab
-        title: 'ChatGPT & Gemini',
+        title: 'ChatGPT, Gemini & Claude',
         subtitle: 'Conversation Saver Extension',
         info_text: 'Choose the export format',
         filename_label: 'Filename',
@@ -16,10 +16,10 @@ const translations = {
         btn_docx: 'Save as DOCX',
         
         // About tab
-        about_title: 'ChatGPT & Gemini Saver',
+        about_title: 'ChatGPT, Gemini & Claude Saver',
         features_title: 'Features',
         feature_1: 'Markdown & DOCX export',
-        feature_2: 'ChatGPT & Gemini support',
+        feature_2: 'ChatGPT, Gemini & Claude support',
         feature_3: 'Custom filenames',
         feature_4: 'Timestamp option',
         feature_5: 'Real Word formatting',
@@ -38,7 +38,7 @@ const translations = {
         tab_about: 'Rólam',
         
         // Export tab
-        title: 'ChatGPT & Gemini',
+        title: 'ChatGPT, Gemini és Claude',
         subtitle: 'Beszélgetés mentő bővítmény',
         info_text: 'Válaszd ki a mentési formátumot',
         filename_label: 'Fájlnév',
@@ -48,10 +48,10 @@ const translations = {
         btn_docx: 'Mentés DOCX-ként',
         
         // About tab
-        about_title: 'ChatGPT & Gemini Mentő',
+        about_title: 'ChatGPT, Gemini és Claude Mentő',
         features_title: 'Funkciók',
         feature_1: 'Markdown & DOCX export',
-        feature_2: 'ChatGPT & Gemini támogatás',
+        feature_2: 'ChatGPT, Gemini és Claude támogatás',
         feature_3: 'Egyedi fájlnevek',
         feature_4: 'Időbélyeg opció',
         feature_5: 'Valódi Word formázás',
