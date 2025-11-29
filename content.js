@@ -74,18 +74,32 @@ function detectPlatform() {
     console.log('Platform detection - URL:', url);
     console.log('Platform detection - Hostname:', hostname);
     
-    if (url.includes('chatgpt.com') || url.includes('chat.openai.com') || hostname.includes('chatgpt') || hostname.includes('openai')) {
+    // ChatGPT detection
+    if (url.includes('chatgpt.com') || url.includes('chat.openai.com') || 
+        hostname.includes('chatgpt') || hostname.includes('openai')) {
         console.log('Detected platform: chatgpt');
         return 'chatgpt';
-    } else if (url.includes('gemini.google.com') || hostname.includes('gemini')) {
+    }
+    
+    // Gemini detection
+    if (url.includes('gemini.google.com') || hostname.includes('gemini')) {
         console.log('Detected platform: gemini');
         return 'gemini';
-    } else if (url.includes('claude.ai') || hostname.includes('claude') || hostname === 'claude.ai') {
+    }
+    
+    // Claude detection - több módszerrel
+    if (url.includes('claude.ai') || 
+        hostname === 'claude.ai' || 
+        hostname.includes('claude') ||
+        hostname.endsWith('.claude.ai')) {
         console.log('Detected platform: claude');
         return 'claude';
     }
     
     console.log('Platform detection failed - returning null');
+    console.log('URL check - claude.ai:', url.includes('claude.ai'));
+    console.log('Hostname check - claude.ai:', hostname === 'claude.ai');
+    console.log('Hostname check - includes claude:', hostname.includes('claude'));
     return null;
 }
 
