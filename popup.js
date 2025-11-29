@@ -145,34 +145,42 @@ function parseMarkdownToDocx(text) {
             continue;
         }
         
-        // Címsorok
+        // Címsorok - inline formázással (bold, italic, stb.)
         if (trimmedLine.startsWith('####')) {
+            const headingText = trimmedLine.substring(4).trim();
+            const runs = parseInlineMarkdown(headingText);
             elements.push(new Paragraph({
-                text: trimmedLine.substring(4).trim(),
+                children: runs,
                 heading: HeadingLevel.HEADING_4
             }));
             i++;
             continue;
         }
         if (trimmedLine.startsWith('###')) {
+            const headingText = trimmedLine.substring(3).trim();
+            const runs = parseInlineMarkdown(headingText);
             elements.push(new Paragraph({
-                text: trimmedLine.substring(3).trim(),
+                children: runs,
                 heading: HeadingLevel.HEADING_3
             }));
             i++;
             continue;
         }
         if (trimmedLine.startsWith('##')) {
+            const headingText = trimmedLine.substring(2).trim();
+            const runs = parseInlineMarkdown(headingText);
             elements.push(new Paragraph({
-                text: trimmedLine.substring(2).trim(),
+                children: runs,
                 heading: HeadingLevel.HEADING_2
             }));
             i++;
             continue;
         }
         if (trimmedLine.startsWith('#')) {
+            const headingText = trimmedLine.substring(1).trim();
+            const runs = parseInlineMarkdown(headingText);
             elements.push(new Paragraph({
-                text: trimmedLine.substring(1).trim(),
+                children: runs,
                 heading: HeadingLevel.HEADING_1
             }));
             i++;
@@ -251,53 +259,29 @@ function parseInlineMarkdown(text) {
     const { TextRun } = docx;
     const runs = [];
     
-    // Ha nincs szöveg, üres array-t adunk vissza
-    if (!text || text.length === 0) {
-        return [new TextRun({ text: "" })];
-    }
-    
     // Regex minták FONTOS SORREND: leghosszabbtól a legrövidebbig!
-    // Fontos: a regex-eknek nem szabad átfedniük egymást!
-    // Non-greedy matching (.+?) használata, hogy ne foglaljon el túl sokat
     const patterns = [
         { regex: /\*\*\*(.+?)\*\*\*/g, bold: true, italics: true, marker: '***' },  // ***félkövér és dőlt***
         { regex: /__(.+?)__/g, bold: true, marker: '__' },                           // __félkövér__
         { regex: /\*\*(.+?)\*\*/g, bold: true, marker: '**' },                       // **félkövér**
-        { regex: /_(.+?)_/g, italics: true, marker: '_' },                           // _dőlt_ (csak ha nem ** vagy *** része)
-        { regex: /\*(.+?)\*/g, italics: true, marker: '*' },                         // *dőlt* (csak ha nem ** vagy *** része)
+        { regex: /_(.+?)_/g, italics: true, marker: '_' },                           // _dőlt_
+        { regex: /\*(.+?)\*/g, italics: true, marker: '*' },                         // *dőlt*
         { regex: /`(.+?)`/g, font: "Courier New", shading: true, marker: '`' }       // `kód`
     ];
     
     // Találjuk meg az összes formázott szakaszt
     const matches = [];
     patterns.forEach(pattern => {
-        // Új regex létrehozása minden iterációban, hogy a global flag helyesen működjön
-        const regex = new RegExp(pattern.regex.source, pattern.regex.flags);
         let match;
-        let lastIndex = -1;
-        
-        // Reset regex lastIndex
-        regex.lastIndex = 0;
-        
+        const regex = new RegExp(pattern.regex);
         while ((match = regex.exec(text)) !== null) {
-            // Ellenőrizzük, hogy nem állunk-e meg ugyanazon a pozíción (végtelen ciklus elkerülése)
-            if (match.index === lastIndex) {
-                // Ha ugyanazon a pozíción vagyunk, előre lépünk
-                regex.lastIndex = match.index + 1;
-                continue;
-            }
-            lastIndex = match.index;
-            
-            // Ellenőrizzük, hogy a match nem üres
-            if (match[1] && match[1].length > 0) {
-                matches.push({
-                    start: match.index,
-                    end: match.index + match[0].length,
-                    text: match[1],
-                    fullMatch: match[0],
-                    options: pattern
-                });
-            }
+            matches.push({
+                start: match.index,
+                end: match.index + match[0].length,
+                text: match[1],
+                fullMatch: match[0],
+                options: pattern
+            });
         }
     });
     
@@ -306,15 +290,12 @@ function parseInlineMarkdown(text) {
         return [new TextRun({ text: text })];
     }
     
-    // Rendezés: először hossz szerint (leghosszabb először), majd pozíció szerint
-    // Ez biztosítja, hogy a *** előbb legyen feldolgozva, mint a **
+    // Rendezés: először pozíció szerint, majd hossz szerint (leghosszabb először)
     matches.sort((a, b) => {
-        const aLen = a.end - a.start;
-        const bLen = b.end - b.start;
-        if (aLen !== bLen) {
-            return bLen - aLen; // Leghosszabb először
+        if (a.start !== b.start) {
+            return a.start - b.start;
         }
-        return a.start - b.start; // Ugyanolyan hosszú esetén pozíció szerint
+        return (b.end - b.start) - (a.end - a.start);
     });
     
     // Átfedő matchek kiszűrése - csak a leghosszabbat/külsőt tartjuk meg
@@ -335,7 +316,7 @@ function parseInlineMarkdown(text) {
         }
     });
     
-    // Rendezés pozíció szerint (végleges sorrend)
+    // Rendezés pozíció szerint
     filteredMatches.sort((a, b) => a.start - b.start);
     
     // Szöveg feldarabolása formázott részekkel
