@@ -408,4 +408,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 const platform = detectPlatform();
-console.log(`ChatGPT, Gemini & Claude Mentő bővítmény betöltve - Platform: ${platform || 'ismeretlen'}`);
+if (platform) {
+    console.log(`ChatGPT, Gemini & Claude Mentő bővítmény betöltve - Platform: ${platform}`);
+} else {
+    console.log(`ChatGPT, Gemini & Claude Mentő bővítmény betöltve - Platform: ismeretlen (URL: ${window.location.href})`);
+}
