@@ -228,37 +228,33 @@ function collectClaudeConversation() {
         // Claude válasz keresése a streaming div-ben
         const claudeResponse = streamingDiv.querySelector('.font-claude-response');
         if (claudeResponse) {
-            // Standard markdown tartalom
-            const markdownContent = claudeResponse.querySelector('.standard-markdown, .progressive-markdown');
             let responseText = '';
             
-            if (markdownContent) {
-                // Ha van markdown konténer, konvertáljuk az egészet
-                responseText = domToMarkdown(markdownContent);
+            // Először keressük az összes standard-markdown vagy progressive-markdown elemet
+            const allMarkdown = claudeResponse.querySelectorAll('.standard-markdown, .progressive-markdown');
+            
+            if (allMarkdown.length > 0) {
+                // Ha van markdown konténer, konvertáljuk mindegyiket
+                allMarkdown.forEach(md => {
+                    const converted = domToMarkdown(md);
+                    if (converted.trim()) {
+                        responseText += converted + '\n\n';
+                    }
+                });
             } else {
-                // Ha nincs markdown konténer, keressük az összes standard-markdown vagy progressive-markdown elemet
-                const allMarkdown = claudeResponse.querySelectorAll('.standard-markdown, .progressive-markdown');
-                if (allMarkdown.length > 0) {
-                    allMarkdown.forEach(md => {
-                        const converted = domToMarkdown(md);
+                // Ha nincs markdown konténer, keressük közvetlenül a markdown elemeket
+                // A font-claude-response-ben közvetlenül lehetnek p, h1-h6, ul, ol, blockquote elemek
+                const directMarkdown = claudeResponse.querySelectorAll('p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, pre');
+                if (directMarkdown.length > 0) {
+                    directMarkdown.forEach(el => {
+                        const converted = domToMarkdown(el);
                         if (converted.trim()) {
-                            responseText += converted + '\n\n';
+                            responseText += converted;
                         }
                     });
                 } else {
-                    // Keresünk közvetlenül a font-claude-response-ben lévő markdown elemeket
-                    const directMarkdown = claudeResponse.querySelectorAll('p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, pre, code');
-                    if (directMarkdown.length > 0) {
-                        directMarkdown.forEach(el => {
-                            const converted = domToMarkdown(el);
-                            if (converted.trim()) {
-                                responseText += converted;
-                            }
-                        });
-                    } else {
-                        // Fallback: teljes válasz szöveg
-                        responseText = claudeResponse.textContent.trim();
-                    }
+                    // Fallback: teljes válasz szöveg
+                    responseText = claudeResponse.textContent.trim();
                 }
             }
             
