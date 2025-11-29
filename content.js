@@ -221,52 +221,97 @@ function collectGeminiConversation() {
 function collectClaudeConversation() {
     const messages = [];
     
-    // Több módszert próbálunk a beszélgetés megtalálásához
+    // Módszer 1: data-is-streaming div-ek keresése (ezek tartalmazzák a válaszokat)
+    const streamingDivs = document.querySelectorAll('div[data-is-streaming]');
     
-    // Módszer 1: Beszélgetési blokkok keresése (általános struktúra)
-    const conversationBlocks = document.querySelectorAll('div[data-test-render-count]');
-    
-    if (conversationBlocks.length > 0) {
-        conversationBlocks.forEach((block) => {
-            // Felhasználói üzenet keresése
-            const userMsg = block.querySelector('[data-testid="user-message"]');
-            if (userMsg) {
-                const userText = userMsg.textContent.trim();
-                if (userText) {
-                    messages.push({
-                        role: 'Felhasználó',
-                        text: userText,
-                        html: userMsg.innerHTML
-                    });
-                }
-            }
+    streamingDivs.forEach((streamingDiv) => {
+        // Claude válasz keresése a streaming div-ben
+        const claudeResponse = streamingDiv.querySelector('.font-claude-response');
+        if (claudeResponse) {
+            // Standard markdown tartalom
+            const markdownContent = claudeResponse.querySelector('.standard-markdown, .progressive-markdown');
+            let responseText = '';
             
-            // Claude válasz keresése
-            const claudeResponse = block.querySelector('.font-claude-response');
-            if (claudeResponse) {
-                // Standard markdown tartalom
-                const markdownContent = claudeResponse.querySelector('.standard-markdown, .progressive-markdown');
-                let responseText = '';
-                
-                if (markdownContent) {
-                    responseText = domToMarkdown(markdownContent);
+            if (markdownContent) {
+                responseText = domToMarkdown(markdownContent);
+            } else {
+                // Ha nincs markdown konténer, próbáljuk az egész válasz szövegét
+                // Keresünk minden szöveges tartalmat a font-claude-response-ben
+                const textElements = claudeResponse.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote, code, pre');
+                if (textElements.length > 0) {
+                    textElements.forEach(el => {
+                        const text = el.textContent.trim();
+                        if (text) {
+                            responseText += text + '\n\n';
+                        }
+                    });
                 } else {
                     // Fallback: teljes válasz szöveg
                     responseText = claudeResponse.textContent.trim();
                 }
-                
-                if (responseText) {
-                    messages.push({
-                        role: 'Claude',
-                        text: responseText,
-                        html: claudeResponse.innerHTML
+            }
+            
+            if (responseText.trim()) {
+                messages.push({
+                    role: 'Claude',
+                    text: responseText.trim(),
+                    html: claudeResponse.innerHTML
+                });
+            }
+        }
+    });
+    
+    // Módszer 2: Beszélgetési blokkok keresése (általános struktúra)
+    const conversationBlocks = document.querySelectorAll('div[data-test-render-count]');
+    
+    conversationBlocks.forEach((block) => {
+        // Felhasználói üzenet keresése
+        const userMsg = block.querySelector('[data-testid="user-message"]');
+        if (userMsg) {
+            const userText = userMsg.textContent.trim();
+            if (userText && !messages.some(m => m.role === 'Felhasználó' && m.text === userText)) {
+                messages.push({
+                    role: 'Felhasználó',
+                    text: userText,
+                    html: userMsg.innerHTML
+                });
+            }
+        }
+        
+        // Claude válasz keresése
+        const claudeResponse = block.querySelector('.font-claude-response');
+        if (claudeResponse) {
+            const markdownContent = claudeResponse.querySelector('.standard-markdown, .progressive-markdown');
+            let responseText = '';
+            
+            if (markdownContent) {
+                responseText = domToMarkdown(markdownContent);
+            } else {
+                // Keresünk szöveges elemeket
+                const textElements = claudeResponse.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote');
+                if (textElements.length > 0) {
+                    textElements.forEach(el => {
+                        const text = el.textContent.trim();
+                        if (text) {
+                            responseText += text + '\n\n';
+                        }
                     });
+                } else {
+                    responseText = claudeResponse.textContent.trim();
                 }
             }
-        });
-    }
+            
+            if (responseText.trim() && !messages.some(m => m.role === 'Claude' && m.text === responseText.trim())) {
+                messages.push({
+                    role: 'Claude',
+                    text: responseText.trim(),
+                    html: claudeResponse.innerHTML
+                });
+            }
+        }
+    });
     
-    // Módszer 2: Ha nem találtunk blokkokat, közvetlenül keressük az üzeneteket
+    // Módszer 3: Ha nem találtunk blokkokat, közvetlenül keressük az üzeneteket
     if (messages.length === 0) {
         // Felhasználói üzenetek közvetlenül
         const userMessages = document.querySelectorAll('[data-testid="user-message"]');
@@ -281,7 +326,7 @@ function collectClaudeConversation() {
             }
         });
         
-        // Claude válaszok közvetlenül
+        // Claude válaszok közvetlenül - keressük az összes font-claude-response elemet
         const claudeResponses = document.querySelectorAll('.font-claude-response');
         claudeResponses.forEach((response) => {
             const markdownContent = response.querySelector('.standard-markdown, .progressive-markdown');
@@ -290,21 +335,31 @@ function collectClaudeConversation() {
             if (markdownContent) {
                 responseText = domToMarkdown(markdownContent);
             } else {
-                // Próbáljuk a teljes válasz szövegét
-                responseText = response.textContent.trim();
+                // Keresünk minden szöveges elemet
+                const textElements = response.querySelectorAll('p.font-claude-response-body, h1, h2, h3, h4, h5, h6, li, blockquote, .standard-markdown p, .progressive-markdown p');
+                if (textElements.length > 0) {
+                    textElements.forEach(el => {
+                        const text = el.textContent.trim();
+                        if (text) {
+                            responseText += text + '\n\n';
+                        }
+                    });
+                } else {
+                    responseText = response.textContent.trim();
+                }
             }
             
-            if (responseText) {
+            if (responseText.trim()) {
                 messages.push({
                     role: 'Claude',
-                    text: responseText,
+                    text: responseText.trim(),
                     html: response.innerHTML
                 });
             }
         });
     }
     
-    // Módszer 3: Alternatív struktúra keresése (group relative inline-flex)
+    // Módszer 4: Alternatív struktúra keresése (group relative inline-flex)
     if (messages.length === 0) {
         const groupMessages = document.querySelectorAll('.group.relative.inline-flex');
         groupMessages.forEach((group) => {
@@ -330,55 +385,23 @@ function collectClaudeConversation() {
                 if (markdownContent) {
                     responseText = domToMarkdown(markdownContent);
                 } else {
-                    responseText = claudeResponse.textContent.trim();
+                    const textElements = claudeResponse.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote');
+                    if (textElements.length > 0) {
+                        textElements.forEach(el => {
+                            const text = el.textContent.trim();
+                            if (text) {
+                                responseText += text + '\n\n';
+                            }
+                        });
+                    } else {
+                        responseText = claudeResponse.textContent.trim();
+                    }
                 }
                 
-                if (responseText) {
+                if (responseText.trim()) {
                     messages.push({
                         role: 'Claude',
-                        text: responseText,
-                        html: claudeResponse.innerHTML
-                    });
-                }
-            }
-        });
-    }
-    
-    // Módszer 4: Teljes oldal szkenelése - minden lehetséges üzenet konténer
-    if (messages.length === 0) {
-        // Keresünk minden olyan elemet, ami tartalmazhat üzeneteket
-        const allContainers = document.querySelectorAll('div[class*="group"], div[class*="message"], div[class*="conversation"]');
-        
-        allContainers.forEach((container) => {
-            // Felhasználói üzenet
-            const userMsg = container.querySelector('[data-testid="user-message"]');
-            if (userMsg && !messages.some(m => m.text === userMsg.textContent.trim())) {
-                const userText = userMsg.textContent.trim();
-                if (userText) {
-                    messages.push({
-                        role: 'Felhasználó',
-                        text: userText,
-                        html: userMsg.innerHTML
-                    });
-                }
-            }
-            
-            // Claude válasz
-            const claudeResponse = container.querySelector('.font-claude-response');
-            if (claudeResponse && !messages.some(m => m.text === claudeResponse.textContent.trim())) {
-                const markdownContent = claudeResponse.querySelector('.standard-markdown, .progressive-markdown');
-                let responseText = '';
-                
-                if (markdownContent) {
-                    responseText = domToMarkdown(markdownContent);
-                } else {
-                    responseText = claudeResponse.textContent.trim();
-                }
-                
-                if (responseText) {
-                    messages.push({
-                        role: 'Claude',
-                        text: responseText,
+                        text: responseText.trim(),
                         html: claudeResponse.innerHTML
                     });
                 }
@@ -390,6 +413,7 @@ function collectClaudeConversation() {
         console.log('Claude: No messages found. Debug info:');
         console.log('User messages found:', document.querySelectorAll('[data-testid="user-message"]').length);
         console.log('Claude responses found:', document.querySelectorAll('.font-claude-response').length);
+        console.log('Streaming divs found:', document.querySelectorAll('div[data-is-streaming]').length);
         return null;
     }
     
