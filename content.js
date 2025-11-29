@@ -233,6 +233,7 @@ function collectClaudeConversation() {
             let responseText = '';
             
             if (markdownContent) {
+                // Ha van markdown konténer, konvertáljuk az egészet
                 responseText = domToMarkdown(markdownContent);
             } else {
                 // Ha nincs markdown konténer, keressük az összes standard-markdown vagy progressive-markdown elemet
@@ -245,8 +246,19 @@ function collectClaudeConversation() {
                         }
                     });
                 } else {
-                    // Fallback: teljes válasz szöveg
-                    responseText = claudeResponse.textContent.trim();
+                    // Keresünk közvetlenül a font-claude-response-ben lévő markdown elemeket
+                    const directMarkdown = claudeResponse.querySelectorAll('p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, pre, code');
+                    if (directMarkdown.length > 0) {
+                        directMarkdown.forEach(el => {
+                            const converted = domToMarkdown(el);
+                            if (converted.trim()) {
+                                responseText += converted;
+                            }
+                        });
+                    } else {
+                        // Fallback: teljes válasz szöveg
+                        responseText = claudeResponse.textContent.trim();
+                    }
                 }
             }
             
@@ -297,7 +309,18 @@ function collectClaudeConversation() {
                             responseText += domToMarkdown(md) + '\n\n';
                         });
                     } else {
-                        responseText = claudeResponse.textContent.trim();
+                        // Keresünk közvetlenül a markdown elemeket
+                        const directMarkdown = claudeResponse.querySelectorAll('p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, pre, code');
+                        if (directMarkdown.length > 0) {
+                            directMarkdown.forEach(el => {
+                                const converted = domToMarkdown(el);
+                                if (converted.trim()) {
+                                    responseText += converted;
+                                }
+                            });
+                        } else {
+                            responseText = claudeResponse.textContent.trim();
+                        }
                     }
                 }
                 
