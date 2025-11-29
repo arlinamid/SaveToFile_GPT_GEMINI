@@ -229,76 +229,37 @@ function collectClaudeConversation() {
     
     // Helper függvény Claude válasz szöveg kinyerésére
     function extractClaudeText(claudeResponse) {
-        let responseText = '';
+        // Először próbáljuk meg az egész claudeResponse-t konvertálni markdown-ra
+        // Ez automatikusan kezeli a beágyazott tag-eket (pl. <h3><b>szöveg</b></h3>)
+        let responseText = domToMarkdown(claudeResponse);
         
-        // Először keressük az összes standard-markdown vagy progressive-markdown elemet
-        const allMarkdown = claudeResponse.querySelectorAll('.standard-markdown, .progressive-markdown');
-        
-        if (allMarkdown.length > 0) {
-            // Ha van markdown konténer, konvertáljuk mindegyiket sorrendben
-            // Fontos: ne használjunk querySelectorAll-t, mert az nem garantál DOM sorrendet
-            // Helyette közvetlenül a claudeResponse-ből keressük a gyerekeket
-            const markdownContainers = Array.from(claudeResponse.children).filter(child => {
-                return child.classList.contains('standard-markdown') || 
-                       child.classList.contains('progressive-markdown') ||
-                       child.querySelector('.standard-markdown, .progressive-markdown');
-            });
+        // Ha az eredmény üres vagy túl rövid, próbáljuk meg más módszerekkel
+        if (!responseText.trim() || responseText.trim().length < 10) {
+            // Keressük az összes standard-markdown vagy progressive-markdown elemet
+            const allMarkdown = claudeResponse.querySelectorAll('.standard-markdown, .progressive-markdown');
             
-            if (markdownContainers.length > 0) {
-                // Ha közvetlenül a claudeResponse gyerekei a markdown konténerek
-                markdownContainers.forEach(container => {
-                    const markdownDiv = container.classList.contains('standard-markdown') || 
-                                       container.classList.contains('progressive-markdown')
-                                       ? container 
-                                       : container.querySelector('.standard-markdown, .progressive-markdown');
-                    
-                    if (markdownDiv) {
-                        const converted = domToMarkdown(markdownDiv);
-                        if (converted.trim()) {
-                            responseText += converted;
-                            // Csak akkor adjunk hozzá extra sortörést, ha nem heading vagy lista
-                            if (!converted.match(/^#{1,6}\s/) && !converted.match(/^[-*+]\s/) && !converted.match(/^\d+\.\s/)) {
-                                responseText += '\n\n';
-                            }
-                        }
-                    }
-                });
-            } else {
-                // Ha nincs közvetlen gyerek, akkor querySelectorAll-t használunk
+            if (allMarkdown.length > 0) {
+                responseText = '';
+                // DOM sorrendben feldolgozzuk (querySelectorAll DOM sorrendet ad vissza)
                 allMarkdown.forEach(md => {
                     const converted = domToMarkdown(md);
                     if (converted.trim()) {
                         responseText += converted;
-                        // Csak akkor adjunk hozzá extra sortörést, ha nem heading vagy lista
-                        if (!converted.match(/^#{1,6}\s/) && !converted.match(/^[-*+]\s/) && !converted.match(/^\d+\.\s/)) {
-                            responseText += '\n\n';
-                        }
-                    }
-                });
-            }
-        } else {
-            // Ha nincs markdown konténer, keressük közvetlenül a markdown elemeket
-            // Fontos: DOM sorrendben, ne querySelectorAll-t használjunk
-            const directMarkdown = Array.from(claudeResponse.querySelectorAll('p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, pre'))
-                .filter(el => {
-                    // Csak azokat, amik közvetlenül a claudeResponse-ben vagy standard-markdown-ban vannak
-                    const parent = el.parentElement;
-                    return parent === claudeResponse || 
-                           parent.classList.contains('standard-markdown') || 
-                           parent.classList.contains('progressive-markdown');
-                });
-            
-            if (directMarkdown.length > 0) {
-                directMarkdown.forEach(el => {
-                    const converted = domToMarkdown(el);
-                    if (converted.trim()) {
-                        responseText += converted;
                     }
                 });
             } else {
-                // Fallback: teljes válasz szöveg (de próbáljuk meg markdown formátumban)
-                responseText = domToMarkdown(claudeResponse);
-                if (!responseText.trim()) {
+                // Ha nincs markdown konténer, keressük közvetlenül a markdown elemeket
+                const directMarkdown = claudeResponse.querySelectorAll('p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, pre');
+                if (directMarkdown.length > 0) {
+                    responseText = '';
+                    directMarkdown.forEach(el => {
+                        const converted = domToMarkdown(el);
+                        if (converted.trim()) {
+                            responseText += converted;
+                        }
+                    });
+                } else {
+                    // Végül: teljes szöveg
                     responseText = claudeResponse.textContent.trim();
                 }
             }
