@@ -251,8 +251,14 @@ function parseInlineMarkdown(text) {
     const { TextRun } = docx;
     const runs = [];
     
+    // Ha nincs szöveg, üres array-t adunk vissza
+    if (!text || text.length === 0) {
+        return [new TextRun({ text: "" })];
+    }
+    
     // Regex minták FONTOS SORREND: leghosszabbtól a legrövidebbig!
     // Fontos: a regex-eknek nem szabad átfedniük egymást!
+    // Non-greedy matching (.+?) használata, hogy ne foglaljon el túl sokat
     const patterns = [
         { regex: /\*\*\*(.+?)\*\*\*/g, bold: true, italics: true, marker: '***' },  // ***félkövér és dőlt***
         { regex: /__(.+?)__/g, bold: true, marker: '__' },                           // __félkövér__
@@ -265,24 +271,33 @@ function parseInlineMarkdown(text) {
     // Találjuk meg az összes formázott szakaszt
     const matches = [];
     patterns.forEach(pattern => {
-        let match;
         // Új regex létrehozása minden iterációban, hogy a global flag helyesen működjön
         const regex = new RegExp(pattern.regex.source, pattern.regex.flags);
-        let lastIndex = 0;
+        let match;
+        let lastIndex = -1;
+        
+        // Reset regex lastIndex
+        regex.lastIndex = 0;
+        
         while ((match = regex.exec(text)) !== null) {
             // Ellenőrizzük, hogy nem állunk-e meg ugyanazon a pozíción (végtelen ciklus elkerülése)
-            if (match.index === lastIndex && match[0].length === 0) {
-                break;
+            if (match.index === lastIndex) {
+                // Ha ugyanazon a pozíción vagyunk, előre lépünk
+                regex.lastIndex = match.index + 1;
+                continue;
             }
             lastIndex = match.index;
             
-            matches.push({
-                start: match.index,
-                end: match.index + match[0].length,
-                text: match[1],
-                fullMatch: match[0],
-                options: pattern
-            });
+            // Ellenőrizzük, hogy a match nem üres
+            if (match[1] && match[1].length > 0) {
+                matches.push({
+                    start: match.index,
+                    end: match.index + match[0].length,
+                    text: match[1],
+                    fullMatch: match[0],
+                    options: pattern
+                });
+            }
         }
     });
     
