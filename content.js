@@ -287,17 +287,25 @@ function collectClaudeConversation() {
             if (markdownContent) {
                 responseText = domToMarkdown(markdownContent);
             } else {
-                // Keresünk szöveges elemeket
-                const textElements = claudeResponse.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote');
-                if (textElements.length > 0) {
-                    textElements.forEach(el => {
-                        const text = el.textContent.trim();
-                        if (text) {
-                            responseText += text + '\n\n';
-                        }
+                // Keresünk minden standard-markdown vagy progressive-markdown konténert
+                const allMarkdown = claudeResponse.querySelectorAll('.standard-markdown, .progressive-markdown');
+                if (allMarkdown.length > 0) {
+                    allMarkdown.forEach(md => {
+                        responseText += domToMarkdown(md) + '\n\n';
                     });
                 } else {
-                    responseText = claudeResponse.textContent.trim();
+                    // Keresünk szöveges elemeket és konvertáljuk markdown-ra
+                    const textElements = claudeResponse.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote, ul, ol');
+                    if (textElements.length > 0) {
+                        textElements.forEach(el => {
+                            const converted = domToMarkdown(el);
+                            if (converted.trim()) {
+                                responseText += converted;
+                            }
+                        });
+                    } else {
+                        responseText = claudeResponse.textContent.trim();
+                    }
                 }
             }
             
