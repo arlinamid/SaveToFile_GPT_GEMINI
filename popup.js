@@ -252,12 +252,13 @@ function parseInlineMarkdown(text) {
     const runs = [];
     
     // Regex minták FONTOS SORREND: leghosszabbtól a legrövidebbig!
+    // Fontos: a regex-eknek nem szabad átfedniük egymást!
     const patterns = [
         { regex: /\*\*\*(.+?)\*\*\*/g, bold: true, italics: true, marker: '***' },  // ***félkövér és dőlt***
         { regex: /__(.+?)__/g, bold: true, marker: '__' },                           // __félkövér__
         { regex: /\*\*(.+?)\*\*/g, bold: true, marker: '**' },                       // **félkövér**
-        { regex: /_(.+?)_/g, italics: true, marker: '_' },                           // _dőlt_
-        { regex: /\*(.+?)\*/g, italics: true, marker: '*' },                         // *dőlt*
+        { regex: /_(.+?)_/g, italics: true, marker: '_' },                           // _dőlt_ (csak ha nem ** vagy *** része)
+        { regex: /\*(.+?)\*/g, italics: true, marker: '*' },                         // *dőlt* (csak ha nem ** vagy *** része)
         { regex: /`(.+?)`/g, font: "Courier New", shading: true, marker: '`' }       // `kód`
     ];
     
@@ -265,8 +266,16 @@ function parseInlineMarkdown(text) {
     const matches = [];
     patterns.forEach(pattern => {
         let match;
-        const regex = new RegExp(pattern.regex);
+        // Új regex létrehozása minden iterációban, hogy a global flag helyesen működjön
+        const regex = new RegExp(pattern.regex.source, pattern.regex.flags);
+        let lastIndex = 0;
         while ((match = regex.exec(text)) !== null) {
+            // Ellenőrizzük, hogy nem állunk-e meg ugyanazon a pozíción (végtelen ciklus elkerülése)
+            if (match.index === lastIndex && match[0].length === 0) {
+                break;
+            }
+            lastIndex = match.index;
+            
             matches.push({
                 start: match.index,
                 end: match.index + match[0].length,
@@ -282,12 +291,15 @@ function parseInlineMarkdown(text) {
         return [new TextRun({ text: text })];
     }
     
-    // Rendezés: először pozíció szerint, majd hossz szerint (leghosszabb először)
+    // Rendezés: először hossz szerint (leghosszabb először), majd pozíció szerint
+    // Ez biztosítja, hogy a *** előbb legyen feldolgozva, mint a **
     matches.sort((a, b) => {
-        if (a.start !== b.start) {
-            return a.start - b.start;
+        const aLen = a.end - a.start;
+        const bLen = b.end - b.start;
+        if (aLen !== bLen) {
+            return bLen - aLen; // Leghosszabb először
         }
-        return (b.end - b.start) - (a.end - a.start);
+        return a.start - b.start; // Ugyanolyan hosszú esetén pozíció szerint
     });
     
     // Átfedő matchek kiszűrése - csak a leghosszabbat/külsőt tartjuk meg
@@ -308,7 +320,7 @@ function parseInlineMarkdown(text) {
         }
     });
     
-    // Rendezés pozíció szerint
+    // Rendezés pozíció szerint (végleges sorrend)
     filteredMatches.sort((a, b) => a.start - b.start);
     
     // Szöveg feldarabolása formázott részekkel
