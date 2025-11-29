@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatGPT & Gemini Saver</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            /* Light mode colors */
+            --bg-gradient-start: #6366f1;
+            --bg-gradient-end: #8b5cf6;
+            --container-bg: rgba(255, 255, 255, 0.98);
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-tertiary: #94a3b8;
+            --border-color: rgba(148, 163, 184, 0.2);
+            --tab-nav-bg-start: #f8fafc;
+            --tab-nav-bg-end: #f1f5f9;
+            --tab-active-color: #6366f1;
+            --tab-hover-bg: rgba(255, 255, 255, 0.5);
+            --info-bg-start: #f8fafc;
+            --info-bg-end: #f1f5f9;
+            --input-bg: #ffffff;
+            --input-border: #e2e8f0;
+            --input-border-focus: #6366f1;
+            --checkbox-hover-bg: rgba(255, 255, 255, 0.6);
+            --btn-md-start: #10b981;
+            --btn-md-end: #059669;
+            --btn-docx-start: #3b82f6;
+            --btn-docx-end: #2563eb;
+            --status-success-bg-start: #d1fae5;
+            --status-success-bg-end: #a7f3d0;
+            --status-success-text: #065f46;
+            --status-success-border: #6ee7b7;
+            --status-error-bg-start: #fee2e2;
+            --status-error-bg-end: #fecaca;
+            --status-error-text: #991b1b;
+            --status-error-border: #fca5a5;
+            --status-loading-bg-start: #dbeafe;
+            --status-loading-bg-end: #bfdbfe;
+            --status-loading-text: #1e40af;
+            --status-loading-border: #93c5fd;
+            --about-border: rgba(99, 102, 241, 0.1);
+            --version-bg: #f8fafc;
+            --version-text: #64748b;
+            --link-bg-start: #f8fafc;
+            --link-bg-end: #f1f5f9;
+            --link-border: rgba(99, 102, 241, 0.2);
+            --link-text: #475569;
+            --support-bg-start: #fffbeb;
+            --support-bg-end: #fef3c7;
+            --support-border: #fbbf24;
+            --support-title: #92400e;
+            --coffee-bg-start: #fbbf24;
+            --coffee-bg-end: #f59e0b;
+            --coffee-text: #000000;
+            --features-bg: rgba(99, 102, 241, 0.05);
+            --features-border: rgba(99, 102, 241, 0.15);
+            --features-title: #6366f1;
+            --features-text: #475569;
+            --features-check: #10b981;
+            --scrollbar-track: #f1f5f9;
+            --scrollbar-thumb-start: #6366f1;
+            --scrollbar-thumb-end: #8b5cf6;
+            --shadow-light: rgba(0, 0, 0, 0.1);
+            --shadow-medium: rgba(0, 0, 0, 0.15);
+            --shadow-heavy: rgba(0, 0, 0, 0.2);
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            :root {
+                /* Dark mode colors */
+                --bg-gradient-start: #1e1b4b;
+                --bg-gradient-end: #312e81;
+                --container-bg: rgba(30, 41, 59, 0.98);
+                --text-primary: #f1f5f9;
+                --text-secondary: #cbd5e1;
+                --text-tertiary: #94a3b8;
+                --border-color: rgba(148, 163, 184, 0.2);
+                --tab-nav-bg-start: #1e293b;
+                --tab-nav-bg-end: #334155;
+                --tab-active-color: #818cf8;
+                --tab-hover-bg: rgba(99, 102, 241, 0.1);
+                --info-bg-start: #1e293b;
+                --info-bg-end: #334155;
+                --input-bg: #1e293b;
+                --input-border: #334155;
+                --input-border-focus: #818cf8;
+                --checkbox-hover-bg: rgba(99, 102, 241, 0.1);
+                --btn-md-start: #10b981;
+                --btn-md-end: #059669;
+                --btn-docx-start: #3b82f6;
+                --btn-docx-end: #2563eb;
+                --status-success-bg-start: #064e3b;
+                --status-success-bg-end: #065f46;
+                --status-success-text: #6ee7b7;
+                --status-success-border: #059669;
+                --status-error-bg-start: #7f1d1d;
+                --status-error-bg-end: #991b1b;
+                --status-error-text: #fca5a5;
+                --status-error-border: #dc2626;
+                --status-loading-bg-start: #1e3a8a;
+                --status-loading-bg-end: #1e40af;
+                --status-loading-text: #93c5fd;
+                --status-loading-border: #3b82f6;
+                --about-border: rgba(129, 140, 248, 0.2);
+                --version-bg: #1e293b;
+                --version-text: #94a3b8;
+                --link-bg-start: #1e293b;
+                --link-bg-end: #334155;
+                --link-border: rgba(129, 140, 248, 0.3);
+                --link-text: #cbd5e1;
+                --support-bg-start: #451a03;
+                --support-bg-end: #78350f;
+                --support-border: #f59e0b;
+                --support-title: #fbbf24;
+                --coffee-bg-start: #fbbf24;
+                --coffee-bg-end: #f59e0b;
+                --coffee-text: #000000;
+                --features-bg: rgba(129, 140, 248, 0.1);
+                --features-border: rgba(129, 140, 248, 0.2);
+                --features-title: #818cf8;
+                --features-text: #cbd5e1;
+                --features-check: #34d399;
+                --scrollbar-track: #1e293b;
+                --scrollbar-thumb-start: #6366f1;
+                --scrollbar-thumb-end: #8b5cf6;
+                --shadow-light: rgba(0, 0, 0, 0.3);
+                --shadow-medium: rgba(0, 0, 0, 0.4);
+                --shadow-heavy: rgba(0, 0, 0, 0.5);
+            }
+        }
+        
+        body {
+            width: 360px;
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            overflow-x: hidden;
+        }
+        
+        .container {
+            background: var(--container-bg);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px var(--shadow-light);
+        }
+        
+        /* Tab Navigation */
+        .tab-nav {
+            display: flex;
+            background: linear-gradient(to bottom, var(--tab-nav-bg-start), var(--tab-nav-bg-end));
+            border-bottom: 1px solid var(--border-color);
+            position: relative;
+            padding-right: 70px; /* Space for language selector */
+        }
+        
+        .tab-nav::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: calc(50% - 35px); /* Adjust for language selector space */
+            height: 3px;
+            background: linear-gradient(90deg, var(--bg-gradient-start), var(--bg-gradient-end));
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 3px 3px 0 0;
+        }
+        
+        .tab-nav.about-active::after {
+            transform: translateX(calc(100% + 70px)); /* Adjust for language selector */
+        }
+        
+        /* Language Selector */
+        .language-selector {
+            position: absolute;
+            top: 50%;
+            right: 12px;
+            transform: translateY(-50%);
+            z-index: 10;
+        }
+        
+        .language-selector select {
+            padding: 6px 28px 6px 10px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--input-bg);
+            color: var(--text-primary);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            appearance: none;
+            min-width: 70px;
+            background-image: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"%3E%3Cpath fill="%2364748b" d="M6 9L1 4h10z"/%3E%3C/svg%3E');
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+        }
+        
+        .language-selector select:hover {
+            border-color: var(--input-border-focus);
+            background-color: var(--checkbox-hover-bg);
+        }
+        
+        .language-selector select:focus {
+            outline: none;
+            border-color: var(--input-border-focus);
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+        }
+        
+        /* Dark mode specific styles for dropdown options */
+        .language-selector select option {
+            background: var(--input-bg);
+            color: var(--text-primary);
+            padding: 8px;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .language-selector select {
+                background-image: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"%3E%3Cpath fill="%23cbd5e1" d="M6 9L1 4h10z"/%3E%3C/svg%3E');
+                color-scheme: dark; /* Native dark mode support */
+            }
+            
+            .language-selector select option {
+                background-color: #1e293b;
+                color: #f1f5f9;
+            }
+        }
+        
+        .tab-button {
+            flex: 1;
+            padding: 14px 10px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            z-index: 1;
+        }
+        
+        .tab-button:hover {
+            color: var(--text-secondary);
+            background: var(--tab-hover-bg);
+        }
+        
+        .tab-button.active {
+            color: var(--tab-active-color);
+        }
+        
+        /* Tab Content */
+        .tab-content {
+            display: none;
+            padding: 24px;
+            animation: fadeSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            min-height: 400px;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @keyframes fadeSlideIn {
+            from { 
+                opacity: 0; 
+                transform: translateY(10px);
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0);
+            }
+        }
+        
+        h1 {
+            margin: 0 0 8px 0;
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-align: center;
+            letter-spacing: -0.5px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        
+        .info {
+            background: linear-gradient(135deg, var(--info-bg-start) 0%, var(--info-bg-end) 100%);
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-align: center;
+            border: 1px solid var(--border-color);
+            font-weight: 500;
+        }
+        
+        /* Filename Input Container */
+        .filename-input-container {
+            margin-bottom: 20px;
+            padding: 16px;
+            background: var(--features-bg);
+            border-radius: 12px;
+            border: 1px solid var(--features-border);
+        }
+        
+        .filename-input-container label {
+            display: block;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        #filenameInput {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid var(--input-border);
+            border-radius: 10px;
+            font-size: 13px;
+            font-family: inherit;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: var(--input-bg);
+            color: var(--text-primary);
+        }
+        
+        #filenameInput:focus {
+            outline: none;
+            border-color: var(--input-border-focus);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+            transform: translateY(-1px);
+        }
+        
+        #filenameInput::placeholder {
+            color: var(--text-tertiary);
+        }
+        
+        .checkbox-container {
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+        
+        .checkbox-container:hover {
+            background: var(--checkbox-hover-bg);
+        }
+        
+        .checkbox-container input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--tab-active-color);
+        }
+        
+        .checkbox-container label {
+            margin: 0;
+            font-size: 13px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            user-select: none;
+            font-weight: 500;
+        }
+        
+        /* Buttons */
+        .buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        button:not(.tab-button) {
+            padding: 14px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 12px var(--shadow-light);
+        }
+        
+        button:not(.tab-button)::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.5s;
+        }
+        
+        button:not(.tab-button):hover::before {
+            left: 100%;
+        }
+        
+        button:not(.tab-button):hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px var(--shadow-medium);
+        }
+        
+        button:not(.tab-button):active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px var(--shadow-light);
+        }
+        
+        #exportMd {
+            background: linear-gradient(135deg, var(--btn-md-start) 0%, var(--btn-md-end) 100%);
+            color: white;
+        }
+        
+        #exportDocx {
+            background: linear-gradient(135deg, var(--btn-docx-start) 0%, var(--btn-docx-end) 100%);
+            color: white;
+        }
+        
+        /* Status Messages */
+        .status {
+            margin-top: 16px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            text-align: center;
+            display: none;
+            font-weight: 600;
+            animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .status.success {
+            background: linear-gradient(135deg, var(--status-success-bg-start) 0%, var(--status-success-bg-end) 100%);
+            color: var(--status-success-text);
+            border: 1px solid var(--status-success-border);
+            display: block;
+        }
+        
+        .status.error {
+            background: linear-gradient(135deg, var(--status-error-bg-start) 0%, var(--status-error-bg-end) 100%);
+            color: var(--status-error-text);
+            border: 1px solid var(--status-error-border);
+            display: block;
+        }
+        
+        .status.loading {
+            background: linear-gradient(135deg, var(--status-loading-bg-start) 0%, var(--status-loading-bg-end) 100%);
+            color: var(--status-loading-text);
+            border: 1px solid var(--status-loading-border);
+            display: block;
+        }
+        
+        .icon {
+            font-size: 18px;
+            filter: drop-shadow(0 2px 4px var(--shadow-light));
+        }
+        
+        /* About Tab Styles */
+        .about-content {
+            text-align: center;
+        }
+        
+        .about-header {
+            margin-bottom: 24px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--about-border);
+        }
+        
+        .about-header h2 {
+            margin: 0 0 8px 0;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        
+        .version {
+            font-size: 12px;
+            color: var(--version-text);
+            font-weight: 600;
+            background: var(--version-bg);
+            padding: 4px 12px;
+            border-radius: 20px;
+            display: inline-block;
+        }
+        
+        .about-links {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        
+        .link-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 14px 20px;
+            background: linear-gradient(135deg, var(--link-bg-start) 0%, var(--link-bg-end) 100%);
+            border: 2px solid var(--link-border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--link-text);
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 8px var(--shadow-light);
+        }
+        
+        .link-button:hover {
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            border-color: var(--bg-gradient-start);
+            color: white;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.3);
+        }
+        
+        .github-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid var(--border-color);
+            transition: all 0.3s;
+        }
+        
+        .link-button:hover .github-avatar {
+            border-color: white;
+            transform: scale(1.1);
+        }
+        
+        .github-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 2px;
+        }
+        
+        .github-username {
+            font-size: 13px;
+            font-weight: 700;
+        }
+        
+        .github-name {
+            font-size: 11px;
+            opacity: 0.8;
+            font-weight: 500;
+        }
+        
+        .link-icon {
+            font-size: 22px;
+            filter: drop-shadow(0 2px 4px var(--shadow-light));
+        }
+        
+        .support-section {
+            margin-top: 24px;
+            padding: 20px;
+            background: linear-gradient(135deg, var(--support-bg-start) 0%, var(--support-bg-end) 100%);
+            border-radius: 16px;
+            border: 2px solid var(--support-border);
+            box-shadow: 0 4px 12px rgba(251, 191, 36, 0.2);
+        }
+        
+        .support-section h3 {
+            margin: 0 0 14px 0;
+            font-size: 14px;
+            color: var(--support-title);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .coffee-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .coffee-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, var(--coffee-bg-start) 0%, var(--coffee-bg-end) 100%);
+            color: var(--coffee-text);
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 14px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 16px rgba(251, 191, 36, 0.4);
+            border: 2px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .coffee-link:hover {
+            background: linear-gradient(135deg, #fcd34d 0%, #fbbf24 100%);
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 8px 24px rgba(251, 191, 36, 0.5);
+        }
+        
+        .coffee-link:active {
+            transform: translateY(-1px) scale(1.02);
+        }
+        
+        .features-list {
+            text-align: left;
+            margin-top: 20px;
+            padding: 18px;
+            background: var(--features-bg);
+            border-radius: 12px;
+            border: 1px solid var(--features-border);
+        }
+        
+        .features-list h4 {
+            margin: 0 0 12px 0;
+            font-size: 13px;
+            color: var(--features-title);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .features-list ul {
+            margin: 0;
+            padding-left: 0;
+            list-style: none;
+        }
+        
+        .features-list li {
+            margin-bottom: 8px;
+            padding-left: 24px;
+            position: relative;
+            font-size: 13px;
+            color: var(--features-text);
+            line-height: 1.6;
+            font-weight: 500;
+        }
+        
+        .features-list li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: var(--features-check);
+            font-weight: 700;
+            font-size: 14px;
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: var(--scrollbar-track);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, var(--scrollbar-thumb-start) 0%, var(--scrollbar-thumb-end) 100%);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #5558d3 0%, #7c3aed 100%);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Tab Navigation -->
+        <div class="tab-nav" id="tabNav">
+            <button class="tab-button active" data-tab="export">💾 <span data-i18n="tab_export">Export</span></button>
+            <button class="tab-button" data-tab="about">ℹ️ <span data-i18n="tab_about">About</span></button>
+            
+            <!-- Language Selector -->
+            <div class="language-selector">
+                <select id="languageSelect">
+                    <option value="en">EN 🇬🇧</option>
+                    <option value="hu">HU 🇭🇺</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Export Tab -->
+        <div class="tab-content active" id="export-tab">
+            <h1>💾 <span data-i18n="title">ChatGPT & Gemini</span></h1>
+            <p class="subtitle" data-i18n="subtitle">Conversation Saver Extension</p>
+            
+            <div class="info">
+                📂 <span data-i18n="info_text">Choose the export format</span>
+            </div>
+            
+            <div class="filename-input-container">
+                <label for="filenameInput" data-i18n="filename_label">Filename</label>
+                <input type="text" id="filenameInput" data-i18n-placeholder="filename_placeholder" placeholder="Auto-generated with date" />
+                <div class="checkbox-container">
+                    <input type="checkbox" id="addTimestamp" checked />
+                    <label for="addTimestamp" data-i18n="timestamp_label">Add timestamp (HH-MM-SS)</label>
+                </div>
+            </div>
+            
+            <div class="buttons">
+                <button id="exportMd">
+                    <span class="icon">📝</span>
+                    <span data-i18n="btn_markdown">Save as Markdown</span>
+                </button>
+                
+                <button id="exportDocx">
+                    <span class="icon">📘</span>
+                    <span data-i18n="btn_docx">Save as DOCX</span>
+                </button>
+            </div>
+            
+            <div id="status" class="status"></div>
+        </div>
+        
+        <!-- About Tab -->
+        <div class="tab-content" id="about-tab">
+            <div class="about-content">
+                <div class="about-header">
+                    <h2>💾 <span data-i18n="about_title">ChatGPT & Gemini Saver</span></h2>
+                    <p class="version">v1.5.0</p>
+                </div>
+                
+                <div class="features-list">
+                    <h4>✨ <span data-i18n="features_title">Features</span></h4>
+                    <ul>
+                        <li data-i18n="feature_1">Markdown & DOCX export</li>
+                        <li data-i18n="feature_2">ChatGPT & Gemini support</li>
+                        <li data-i18n="feature_3">Custom filenames</li>
+                        <li data-i18n="feature_4">Timestamp option</li>
+                        <li data-i18n="feature_5">Real Word formatting</li>
+                    </ul>
+                </div>
+                
+                <div class="about-links">
+                    <a href="https://github.com/arlinamid" target="_blank" class="link-button">
+                        <img src="https://avatars.githubusercontent.com/u/67795466?v=4" 
+                             alt="Rózsavölgyi János" 
+                             class="github-avatar">
+                        <div class="github-info">
+                            <span class="github-username">@arlinamid</span>
+                            <span class="github-name">Rózsavölgyi János</span>
+                        </div>
+                    </a>
+                </div>
+                
+                <div class="support-section">
+                    <h3>☕ <span data-i18n="support_title">Support</span></h3>
+                    <div class="coffee-container">
+                        <a href="https://www.buymeacoffee.com/arlinamid" target="_blank" class="coffee-link">
+                            <span>☕</span>
+                            <span data-i18n="coffee_btn">Buy me a coffee</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="libs/docx.js"></script>
+    <script src="i18n.js"></script>
+    <script src="popup.js"></script>
+</body>
+</html>
