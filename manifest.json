@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "ChatGPT, Gemini & Claude Beszélgetés Mentő",
-  "version": "1.7.2",
-  "description": "Menti a ChatGPT, Gemini és Claude beszélgetéseket MD és DOCX formátumban",
+  "version": "1.8.0",
+  "description": "Menti a ChatGPT, Gemini és Claude beszélgetéseket MD és DOCX formátumban, Mermaid workflow diagramokkal",
   "permissions": [
     "activeTab",
     "scripting"
@@ -11,7 +11,9 @@
     "https://chatgpt.com/*",
     "https://chat.openai.com/*",
     "https://gemini.google.com/*",
-    "https://claude.ai/*"
+    "https://claude.ai/*",
+    "https://grok.com/*",
+    "https://mermaid.live/*"
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'; img-src 'self' https://avatars.githubusercontent.com data:;"
@@ -35,7 +37,8 @@
         "https://chatgpt.com/*",
         "https://chat.openai.com/*",
         "https://gemini.google.com/*",
-        "https://claude.ai/*"
+        "https://claude.ai/*",
+        "https://grok.com/*"
       ],
       "js": ["content.js"]
     }

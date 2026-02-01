@@ -3,6 +3,7 @@ const translations = {
     en: {
         // Tabs
         tab_export: 'Export',
+        tab_workflow: 'Workflow',
         tab_about: 'About',
         
         // Export tab
@@ -23,6 +24,7 @@ const translations = {
         feature_3: 'Custom filenames',
         feature_4: 'Timestamp option',
         feature_5: 'Real Word formatting',
+        feature_6: 'Mermaid workflow diagrams',
         support_title: 'Support',
         coffee_btn: 'Buy me a coffee',
         
@@ -30,11 +32,30 @@ const translations = {
         status_loading: 'Loading conversation...',
         status_success: 'File saved successfully!',
         status_error: 'Error: No conversation found',
-        status_error_generic: 'An error occurred'
+        status_error_generic: 'An error occurred',
+        
+        // Workflow tab
+        workflow_title: 'Mermaid Workflow',
+        workflow_subtitle: 'Create and visualize workflow diagrams',
+        workflow_code_label: 'Mermaid Code',
+        workflow_code_placeholder: 'Enter Mermaid diagram code here...',
+        workflow_preview_placeholder: 'Preview will appear here...',
+        workflow_examples_title: 'Examples',
+        btn_export_svg: 'Export SVG',
+        btn_export_png: 'Export PNG',
+        btn_open_live: 'Open in Mermaid Live',
+        workflow_error_empty: 'Please enter Mermaid code',
+        workflow_error_render: 'Error rendering diagram',
+        workflow_export_success: 'Diagram exported successfully!',
+        example_flowchart: 'Flowchart',
+        example_sequence: 'Sequence Diagram',
+        example_gantt: 'Gantt Chart',
+        example_class: 'Class Diagram'
     },
     hu: {
         // Tabok
         tab_export: 'Export',
+        tab_workflow: 'Workflow',
         tab_about: 'Rólam',
         
         // Export tab
@@ -55,6 +76,7 @@ const translations = {
         feature_3: 'Egyedi fájlnevek',
         feature_4: 'Időbélyeg opció',
         feature_5: 'Valódi Word formázás',
+        feature_6: 'Mermaid workflow diagramok',
         support_title: 'Támogatás',
         coffee_btn: 'Vegyél egy kávét',
         
@@ -62,7 +84,25 @@ const translations = {
         status_loading: 'Beszélgetés betöltése...',
         status_success: 'Fájl sikeresen mentve!',
         status_error: 'Hiba: Nem találtam beszélgetést',
-        status_error_generic: 'Hiba történt'
+        status_error_generic: 'Hiba történt',
+        
+        // Workflow tab
+        workflow_title: 'Mermaid Workflow',
+        workflow_subtitle: 'Munkafolyamat diagramok létrehozása és megjelenítése',
+        workflow_code_label: 'Mermaid Kód',
+        workflow_code_placeholder: 'Írd be a Mermaid diagram kódját...',
+        workflow_preview_placeholder: 'Az előnézet itt jelenik meg...',
+        workflow_examples_title: 'Példák',
+        btn_export_svg: 'SVG exportálás',
+        btn_export_png: 'PNG exportálás',
+        btn_open_live: 'Megnyitás Mermaid Live-ban',
+        workflow_error_empty: 'Kérlek add meg a Mermaid kódot',
+        workflow_error_render: 'Hiba a diagram renderelésekor',
+        workflow_export_success: 'Diagram sikeresen exportálva!',
+        example_flowchart: 'Folyamatábra',
+        example_sequence: 'Szekvencia diagram',
+        example_gantt: 'Gantt diagram',
+        example_class: 'Osztály diagram'
     }
 };
 
