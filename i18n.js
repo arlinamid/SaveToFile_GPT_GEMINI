@@ -5,7 +5,7 @@ const translations = {
         tab_export: 'Export',
         tab_workflow: 'Workflow',
         tab_about: 'About',
-        
+
         // Export tab
         title: 'ChatGPT, Gemini & Claude',
         subtitle: 'Conversation Saver Extension',
@@ -15,7 +15,7 @@ const translations = {
         timestamp_label: 'Add timestamp (HH-MM-SS)',
         btn_markdown: 'Save as Markdown',
         btn_docx: 'Save as DOCX',
-        
+
         // About tab
         about_title: 'ChatGPT, Gemini & Claude Saver',
         features_title: 'Features',
@@ -27,13 +27,13 @@ const translations = {
         feature_6: 'Mermaid workflow diagrams',
         support_title: 'Support',
         coffee_btn: 'Buy me a coffee',
-        
+
         // Status messages
         status_loading: 'Loading conversation...',
         status_success: 'File saved successfully!',
         status_error: 'Error: No conversation found',
         status_error_generic: 'An error occurred',
-        
+
         // Workflow tab
         workflow_title: 'Mermaid Workflow',
         workflow_subtitle: 'Create and visualize workflow diagrams',
@@ -50,14 +50,21 @@ const translations = {
         example_flowchart: 'Flowchart',
         example_sequence: 'Sequence Diagram',
         example_gantt: 'Gantt Chart',
-        example_class: 'Class Diagram'
+        example_class: 'Class Diagram',
+
+        // Update Checker
+        check_updates: 'Check for Updates',
+        status_checking: 'Checking for updates...',
+        update_available: 'New version available!',
+        update_uptodate: 'You are up to date.',
+        update_error: 'Could not check for updates.'
     },
     hu: {
         // Tabok
         tab_export: 'Export',
         tab_workflow: 'Workflow',
         tab_about: 'Rólam',
-        
+
         // Export tab
         title: 'ChatGPT, Gemini és Claude',
         subtitle: 'Beszélgetés mentő bővítmény',
@@ -67,7 +74,7 @@ const translations = {
         timestamp_label: 'Időbélyeg hozzáadása (ÓÓ-PP-MM)',
         btn_markdown: 'Mentés Markdown-ként',
         btn_docx: 'Mentés DOCX-ként',
-        
+
         // About tab
         about_title: 'ChatGPT, Gemini és Claude Mentő',
         features_title: 'Funkciók',
@@ -79,13 +86,13 @@ const translations = {
         feature_6: 'Mermaid workflow diagramok',
         support_title: 'Támogatás',
         coffee_btn: 'Vegyél egy kávét',
-        
+
         // Státusz üzenetek
         status_loading: 'Beszélgetés betöltése...',
         status_success: 'Fájl sikeresen mentve!',
         status_error: 'Hiba: Nem találtam beszélgetést',
         status_error_generic: 'Hiba történt',
-        
+
         // Workflow tab
         workflow_title: 'Mermaid Workflow',
         workflow_subtitle: 'Munkafolyamat diagramok létrehozása és megjelenítése',
@@ -102,7 +109,14 @@ const translations = {
         example_flowchart: 'Folyamatábra',
         example_sequence: 'Szekvencia diagram',
         example_gantt: 'Gantt diagram',
-        example_class: 'Osztály diagram'
+        example_class: 'Osztály diagram',
+
+        // Frissítés kereső
+        check_updates: 'Frissítések keresése',
+        status_checking: 'Frissítések keresése...',
+        update_available: 'Új verzió elérhető!',
+        update_uptodate: 'A bővítmény naprakész.',
+        update_error: 'Nem sikerült ellenőrizni a frissítéseket.'
     }
 };
 
@@ -113,15 +127,15 @@ function detectLanguage() {
     if (savedLang) {
         return savedLang;
     }
-    
+
     // Otherwise detect from browser
     const browserLang = navigator.language || navigator.userLanguage;
-    
+
     // Check if Hungarian
     if (browserLang.startsWith('hu')) {
         return 'hu';
     }
-    
+
     // Default to English
     return 'en';
 }
@@ -134,7 +148,7 @@ function saveLanguage(lang) {
 // Apply translations
 function applyTranslations(lang) {
     const t = translations[lang] || translations.en;
-    
+
     // Update all elements with data-i18n attribute
     document.querySelectorAll('[data-i18n]').forEach(element => {
         const key = element.getAttribute('data-i18n');
@@ -142,7 +156,7 @@ function applyTranslations(lang) {
             element.textContent = t[key];
         }
     });
-    
+
     // Update placeholder attributes
     document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
         const key = element.getAttribute('data-i18n-placeholder');
@@ -150,10 +164,10 @@ function applyTranslations(lang) {
             element.placeholder = t[key];
         }
     });
-    
+
     // Update HTML lang attribute
     document.documentElement.lang = lang;
-    
+
     // Update language selector
     const langSelect = document.getElementById('languageSelect');
     if (langSelect) {
@@ -165,10 +179,10 @@ function applyTranslations(lang) {
 document.addEventListener('DOMContentLoaded', () => {
     const language = detectLanguage();
     applyTranslations(language);
-    
+
     // Store language for use in popup.js
     window.currentLanguage = language;
-    
+
     // Add event listener to language selector
     const langSelect = document.getElementById('languageSelect');
     if (langSelect) {

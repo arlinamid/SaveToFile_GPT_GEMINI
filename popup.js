@@ -92,8 +92,8 @@ async function exportAsMarkdown() {
 }
 
 // Markdown -> DOCX formázás konverter
-function parseMarkdownToDocx(text) {
-    const { Paragraph, TextRun, HeadingLevel } = docx;
+async function parseMarkdownToDocx(text) {
+    const { Paragraph, TextRun, HeadingLevel, ImageRun } = docx;
     const elements = [];
     const lines = text.split('\n');
     let i = 0;
@@ -105,6 +105,48 @@ function parseMarkdownToDocx(text) {
         // Üres sor
         if (!trimmedLine) {
             elements.push(new Paragraph({ text: "" }));
+            i++;
+            continue;
+        }
+
+        // Kép kezelése (Markdown: ![alt](url))
+        const imageMatch = trimmedLine.match(/^!\[(.*?)\]\((.*?)\)$/);
+        if (imageMatch) {
+            const altText = imageMatch[1];
+            const imageUrl = imageMatch[2];
+
+            try {
+                const imageData = await fetchImage(imageUrl);
+                if (imageData && imageData.buffer) {
+                    // Képarány megtartása, max szélesség 500px
+                    const maxWidth = 500;
+                    let finalWidth = imageData.width;
+                    let finalHeight = imageData.height;
+
+                    if (finalWidth > maxWidth) {
+                        const ratio = maxWidth / finalWidth;
+                        finalWidth = maxWidth;
+                        finalHeight = finalHeight * ratio;
+                    }
+
+                    elements.push(new Paragraph({
+                        children: [
+                            new ImageRun({
+                                data: imageData.buffer,
+                                transformation: {
+                                    width: finalWidth,
+                                    height: finalHeight
+                                }
+                            })
+                        ]
+                    }));
+                } else {
+                    elements.push(new Paragraph({ text: `[Kép: ${altText} - Nem sikerült letölteni]` }));
+                }
+            } catch (e) {
+                console.error("Image processing failed:", e);
+                elements.push(new Paragraph({ text: `[Kép: ${altText} - Hiba]` }));
+            }
             i++;
             continue;
         }
@@ -355,6 +397,60 @@ function parseInlineMarkdown(text) {
     return runs;
 }
 
+// Kép letöltése
+// Kép letöltése és méretek lekérése proxy-n keresztül
+async function fetchImage(url) {
+    try {
+        // Üzenet küldése a background scriptnek
+        const response = await chrome.runtime.sendMessage({
+            action: 'fetchImage',
+            url: url
+        });
+
+        if (!response || !response.success || !response.data) {
+            console.error("Proxy fetch failed:", response ? response.error : "Unknown error");
+            return null;
+        }
+
+        // Base64 konvertálása ArrayBuffer-ré
+        const binaryString = atob(response.data);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        const arrayBuffer = bytes.buffer;
+
+        // Blob létrehozása a méretek meghatározásához
+        const blob = new Blob([arrayBuffer], { type: response.mimeType || 'image/png' });
+
+        // Méretek meghatározása
+        const dimensions = await new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                resolve({ width: img.naturalWidth, height: img.naturalHeight });
+                URL.revokeObjectURL(img.src); // Takarítás
+            };
+            img.onerror = () => {
+                resolve({ width: 400, height: 400 }); // Fallback
+                URL.revokeObjectURL(img.src);
+            };
+            // Objektum URL létrehozása a blob-ból
+            const objectUrl = URL.createObjectURL(blob);
+            img.src = objectUrl;
+        });
+
+        return {
+            buffer: arrayBuffer,
+            width: dimensions.width,
+            height: dimensions.height
+        };
+    } catch (e) {
+        console.error("Fetch image error:", e);
+        return null;
+    }
+}
+
 // DOCX export (docx könyvtár használatával)
 async function exportAsDocx() {
     showStatusI18n('status_loading', 'loading');
@@ -363,7 +459,7 @@ async function exportAsDocx() {
     if (!data) return;
 
     try {
-        const { Document, Paragraph, TextRun, HeadingLevel, AlignmentType, Packer } = docx;
+        const { Document, Paragraph, TextRun, HeadingLevel, AlignmentType, Packer, ImageRun } = docx;
 
         const children = [
             new Paragraph({
@@ -378,7 +474,8 @@ async function exportAsDocx() {
             }),
         ];
 
-        data.messages.forEach(msg => {
+        // Használj for...of loop-ot async/await-hez a forEach helyett
+        for (const msg of data.messages) {
             // Szerepkör
             children.push(
                 new Paragraph({
@@ -388,8 +485,8 @@ async function exportAsDocx() {
                 })
             );
 
-            // Üzenet szöveg - Markdown -> DOCX konverzió
-            const parsedElements = parseMarkdownToDocx(msg.text);
+            // Üzenet szöveg - Markdown -> DOCX konverzió (most már async)
+            const parsedElements = await parseMarkdownToDocx(msg.text);
             children.push(...parsedElements);
 
             // Elválasztó
@@ -399,7 +496,7 @@ async function exportAsDocx() {
                     spacing: { before: 200, after: 200 }
                 })
             );
-        });
+        }
 
         const doc = new Document({
             sections: [{
@@ -419,6 +516,7 @@ async function exportAsDocx() {
         console.error(error);
     }
 }
+
 
 // Fájl letöltés helper függvények
 function downloadFile(content, filename, mimeType) {
@@ -783,3 +881,74 @@ document.querySelectorAll('.example-btn').forEach(btn => {
         renderMermaid(code);
     });
 });
+
+// Update Checker
+const GITHUB_REPO = 'arlinamid/SaveToFile_GPT_GEMINI'; // Replace with your repository
+
+async function checkForUpdates() {
+    console.log('Checking for updates...');
+    const statusDiv = document.getElementById('updateStatus');
+    const updateBtn = document.getElementById('checkUpdates');
+
+    if (!statusDiv || !updateBtn) {
+        console.error('Update elements not found');
+        return;
+    }
+
+    statusDiv.textContent = window.i18n ? window.i18n.translate('status_checking') : 'Checking...';
+    statusDiv.className = 'update-status loading';
+    // Reset opacity to ensure it's visible if it was hidden
+    statusDiv.style.opacity = '1';
+
+    updateBtn.disabled = true;
+    updateBtn.classList.add('loading');
+
+    try {
+        console.log(`Fetching releases from https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
+        const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to fetch release info: ${response.status} ${response.statusText} - ${errorText}`);
+        }
+
+        const data = await response.json();
+        const latestVersion = data.tag_name.replace(/^v/, '');
+        const currentVersion = chrome.runtime.getManifest().version;
+
+        console.log(`Current: ${currentVersion}, Latest: ${latestVersion}`);
+
+        if (compareVersions(latestVersion, currentVersion) > 0) {
+            const updateMsg = window.i18n ? window.i18n.translate('update_available') : 'New version available!';
+            statusDiv.innerHTML = `<span class="update-status available">${updateMsg} (v${latestVersion})</span><br><a href="${data.html_url}" target="_blank" class="update-link">Download</a>`;
+            statusDiv.className = 'update-status available';
+        } else {
+            const upToDateMsg = window.i18n ? window.i18n.translate('update_uptodate') : 'You are up to date.';
+            statusDiv.textContent = `${upToDateMsg} (v${currentVersion})`;
+            statusDiv.className = 'update-status latest';
+        }
+    } catch (error) {
+        console.error('Update check failed:', error);
+        const errorMsg = window.i18n ? window.i18n.translate('update_error') : 'Could not check for updates.';
+        statusDiv.textContent = errorMsg;
+        statusDiv.className = 'update-status error';
+        statusDiv.title = error.message; // Show detailed error on hover
+    } finally {
+        updateBtn.disabled = false;
+        updateBtn.classList.remove('loading');
+    }
+}
+
+function compareVersions(v1, v2) {
+    const p1 = v1.split('.').map(Number);
+    const p2 = v2.split('.').map(Number);
+
+    for (let i = 0; i < Math.max(p1.length, p2.length); i++) {
+        const n1 = p1[i] || 0;
+        const n2 = p2[i] || 0;
+        if (n1 > n2) return 1;
+        if (n1 < n2) return -1;
+    }
+    return 0;
+}
+
+document.getElementById('checkUpdates')?.addEventListener('click', checkForUpdates);

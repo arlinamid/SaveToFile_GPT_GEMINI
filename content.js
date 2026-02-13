@@ -66,6 +66,13 @@ function domToMarkdown(node) {
                 return content;
             }
             return `${content}\n`;
+        case 'IMG':
+            const alt = node.getAttribute('alt') || 'image';
+            const src = node.getAttribute('src');
+            if (src) {
+                return `\n![${alt}](${src})\n\n`;
+            }
+            return '';
         default: return content;
     }
 }
@@ -130,6 +137,31 @@ function collectChatGPTConversation() {
         let messageText = "";
         let messageHtml = "";
 
+        // Képek keresése az üzenetben (Text után)
+        const images = article.querySelectorAll('img');
+        let imageMarkdown = "";
+        const seenSrcs = new Set();
+
+        images.forEach(img => {
+            const src = img.getAttribute('src');
+            if (src && !seenSrcs.has(src)) {
+                // Szűrjük a profilképeket és egyéb ikonokat (pl. 24x24, avatar)
+                if (img.width < 50 || img.height < 50 || src.includes('avatar') || src.includes('profile')) {
+                    return;
+                }
+
+                // Ellenőrizzük, hogy ez a kép már benne van-e a messageText-ben (ha a markdown konvertálás már megtalálta)
+                if (messageText.includes(src)) {
+                    seenSrcs.add(src);
+                    return;
+                }
+
+                const alt = img.getAttribute('alt') || 'image';
+                imageMarkdown += `\n![${alt}](${src})\n\n`;
+                seenSrcs.add(src);
+            }
+        });
+
         if (turn === 'user') {
             role = "Felhasználó";
             const contentDiv = article.querySelector('.whitespace-pre-wrap');
@@ -167,6 +199,11 @@ function collectChatGPTConversation() {
                 }
                 messageHtml = contentDiv.innerHTML;
             }
+        }
+
+        // Képek hozzáadása a szöveghez
+        if (imageMarkdown) {
+            messageText = messageText ? messageText + "\n" + imageMarkdown : imageMarkdown;
         }
 
         // Fallback: ha még mindig nincs szöveg, az egész article-t próbáljuk
@@ -208,6 +245,25 @@ function collectGeminiConversation() {
         // Felhasználó kérdése (user-query)
         const userQuery = container.querySelector('user-query');
         if (userQuery) {
+            // Képek keresése a user query-ben
+            const userImages = userQuery.querySelectorAll('img');
+            let userImageMarkdown = "";
+            const userSeenSrcs = new Set();
+
+            userImages.forEach(img => {
+                const src = img.getAttribute('src');
+                if (src && !userSeenSrcs.has(src)) {
+                    if (img.width < 50 || img.height < 50 || src.includes('avatar') || src.includes('profile')) {
+                        return;
+                    }
+                    // Ellenőrizzük, hogy ez a kép már benne van-e a messageText-ben (ha a markdown konvertálás már megtalálta)
+                    // Itt még nincs messageText, de a domToMarkdown később lefuthat
+                    const alt = img.getAttribute('alt') || 'User uploaded image';
+                    userImageMarkdown += `\n![${alt}](${src})\n\n`;
+                    userSeenSrcs.add(src);
+                }
+            });
+
             // Próbáljuk meg markdown formátumban, hogy megőrizzük a formázást
             let queryText = domToMarkdown(userQuery);
 
@@ -230,6 +286,14 @@ function collectGeminiConversation() {
                 }
             }
 
+            // Képek hozzáadása
+            if (userImageMarkdown) {
+                // Csak akkor adjuk hozzá, ha még nincs benne (bár a domToMarkdown valószínűleg nem rakja bele IMG tag nélkül)
+                if (!queryText.includes(userImageMarkdown.trim())) {
+                    queryText = queryText ? queryText + "\n" + userImageMarkdown : userImageMarkdown;
+                }
+            }
+
             if (queryText.trim()) {
                 messages.push({
                     role: 'Felhasználó',
@@ -242,6 +306,24 @@ function collectGeminiConversation() {
         // Gemini válasza (model-response)
         const modelResponse = container.querySelector('model-response');
         if (modelResponse) {
+            // Képek keresése a model response-ban (generált képek)
+            const modelImages = modelResponse.querySelectorAll('img');
+            let modelImageMarkdown = "";
+            const modelSeenSrcs = new Set();
+
+            modelImages.forEach(img => {
+                const src = img.getAttribute('src');
+                if (src && !modelSeenSrcs.has(src)) {
+                    if (img.width < 50 || img.height < 50 || src.includes('avatar') || src.includes('profile')) {
+                        return;
+                    }
+                    const alt = img.getAttribute('alt') || 'Generated Image';
+                    modelImageMarkdown += `\n![${alt}](${src})\n\n`;
+                    modelSeenSrcs.add(src);
+                }
+            });
+
+
             // Először próbáljuk meg az egész message-content-et markdown-ra konvertálni
             const messageContent = modelResponse.querySelector('message-content');
             let responseText = '';
@@ -273,6 +355,13 @@ function collectGeminiConversation() {
                         // Végül: teljes szöveg
                         responseText = messageContent.textContent.trim();
                     }
+                }
+            }
+
+            // Képek hozzáadása
+            if (modelImageMarkdown) {
+                if (!responseText.includes(modelImageMarkdown.trim())) {
+                    responseText = responseText ? responseText + "\n" + modelImageMarkdown : modelImageMarkdown;
                 }
             }
 
@@ -492,6 +581,31 @@ function collectGrokConversation() {
             }
         }
 
+        // Képek keresése a buborékban
+        // Grok specifikus képek (.group/grok-image)
+        // A slash karaktert escape-elni kell a querySelector-ban: .group\/grok-image -> .group\\/grok-image
+        const grokImages = bubble.querySelectorAll('.group\\/grok-image img');
+        let imageMarkdown = "";
+        const seenSrcs = new Set();
+
+        grokImages.forEach(img => {
+            const src = img.getAttribute('src');
+            if (src) {
+                // Szűrjük a 24x24 ikonokat, de a generált képeket megtartjuk
+                if (img.width < 50 || img.height < 50 || src.includes('avatar') || src.includes('profile')) {
+                    return;
+                }
+
+                // A generált képeknél általában van egy háttérkép (blur) és egy előtérkép (z-[200]).
+                // A háttérkép src-je ugyanaz lehet. Ha már láttuk, ne adjuk hozzá mégegyszer.
+                if (seenSrcs.has(src)) return;
+
+                const alt = img.getAttribute('alt') || 'Grok Generated Image';
+                imageMarkdown += `\n![${alt}](${src})\n\n`;
+                seenSrcs.add(src);
+            }
+        });
+
         // Szöveg kinyerése
         const markdownDiv = bubble.querySelector('.markdown');
         if (markdownDiv) {
@@ -505,6 +619,55 @@ function collectGrokConversation() {
         if (!text || !text.trim()) {
             console.warn(`[SaveToFile] Bubble ${index}: domToMarkdown returned empty, using innerText fallback.`);
             text = bubble.innerText;
+        }
+
+        // Képek hozzáadása
+        if (imageMarkdown) {
+            // Csak akkor adjuk hozzá, ha még nincs benne (bár a domToMarkdown valószínűleg nem rakja bele IMG tag nélkül)
+            // A domToMarkdown alapból kezeli az IMG tag-eket, de lehet, hogy nem érte el őket (pl. markdownDiv-en kívül voltak).
+            // Itt ellenőrizzük, hogy benne vannak-e a szövegben.
+
+            // Az ellenőrzés kicsit trükkös, mert a domToMarkdown lehet hogy már hozzáadta máshogy.
+            // De mivel a seenSrcs-ben benne vannak a most talált képek, végigiterálhatunk rajtuk.
+
+            seenSrcs.forEach(src => {
+                if (!text.includes(src)) {
+                    // Keressük meg a hozzá tartozó alt textet és markdown formátumot
+                    // (vagy egyszerűen csak fűzzük hozzá az összes újat, amit nem találtunk meg)
+                    // Egyszerűbb, ha újraépítjük az imageMarkdown-t csak a hiányzókból, de a fenti ciklusban már építettük.
+                    // Ha a szöveg nem tartalmazza az imageMarkdown-t EGYBEN, az nem jelent semmit.
+                    // Jobb megközelítés:
+                }
+            });
+
+            // Egyszerűbb megközelítés:
+            // Ha a szöveg NEM tartalmazza az első kép URL-jét, akkor valószínűleg egyiket sem tartalmazza (feltételezve, hogy egy blokkban vannak).
+            // De lehet, hogy a domToMarkdown megtalálta az egyiket, a másikat nem? Nem valószínű.
+            // A biztonság kedvéért fűzzük hozzá azokat, amik hiányoznak.
+
+            // Újrageneráljuk a hiányzókat
+            let missingImagesMarkdown = "";
+            grokImages.forEach(img => {
+                const src = img.getAttribute('src');
+                if (src && !text.includes(src)) {
+                    // Még ellenőrizzük, hogy ehhez a körhöz már hozzáadtuk-e (seenSrcs duplikáció szűrés miatt)
+                    // De itt a `missingImagesMarkdown`-ba kell gyűjteni.
+
+                    // Trükk: a seenSrcs-ben már benne van minden, amit ebben a körben találtunk.
+                    // Csak azt kell tudni, hogy a `text`-ben benne van-e.
+                    if (img.width < 50 || img.height < 50 || src.includes('avatar') || src.includes('profile')) return;
+
+                    // Kerüljük a duplikációt a missingImagesMarkdown-on belül is
+                    if (!missingImagesMarkdown.includes(src)) {
+                        const alt = img.getAttribute('alt') || 'Grok Generated Image';
+                        missingImagesMarkdown += `\n![${alt}](${src})\n\n`;
+                    }
+                }
+            });
+
+            if (missingImagesMarkdown) {
+                text = text ? text + "\n" + missingImagesMarkdown : missingImagesMarkdown;
+            }
         }
 
         console.log(`[SaveToFile] Bubble ${index}: Role=${role}, TextLength=${text ? text.length : 0}`);

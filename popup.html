@@ -973,6 +973,102 @@
                 color: #f1f5f9;
             }
         }
+
+        /* Update Checker Styles */
+        .update-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .update-btn {
+            padding: 8px 16px !important;
+            font-size: 12px !important;
+            background: rgba(99, 102, 241, 0.1) !important;
+            color: var(--text-primary) !important;
+            border: 1px solid var(--border-color) !important;
+            box-shadow: none !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+
+        .update-btn:hover {
+            background: rgba(99, 102, 241, 0.2) !important;
+            border-color: var(--input-border-focus) !important;
+            transform: translateY(-1px) !important;
+        }
+
+        .update-btn:active {
+            transform: translateY(0) !important;
+        }
+
+        .update-btn.loading {
+            opacity: 0.7;
+            cursor: wait;
+        }
+
+        .update-btn.loading .icon-svg {
+            animation: spin 1s linear infinite;
+        }
+
+        .update-status {
+            font-size: 12px;
+            color: var(--text-secondary);
+            min-height: 20px;
+            opacity: 0;
+            transform: translateY(-5px);
+            transition: all 0.3s ease;
+        }
+
+        .update-status.loading,
+        .update-status.available,
+        .update-status.latest,
+        .update-status.error {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .update-status.available {
+            color: var(--status-success-text);
+            font-weight: 600;
+            animation: pulse-success 2s infinite;
+        }
+
+        @keyframes pulse-success {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .update-status.latest {
+            color: var(--text-tertiary);
+        }
+
+        .update-status.error {
+            color: var(--status-error-text);
+        }
+
+        .update-link {
+            display: inline-block;
+            margin-top: 4px;
+            color: var(--tab-active-color);
+            text-decoration: none;
+            font-weight: 600;
+            border-bottom: 1px dashed var(--tab-active-color);
+        }
+
+        .update-link:hover {
+            border-bottom-style: solid;
+        }
     </style>
 </head>
 
@@ -1269,7 +1365,18 @@
                         </svg>
                         <span data-i18n="about_title">ChatGPT, Gemini & Claude Saver</span>
                     </h2>
-                    <p class="version">v1.8.0</p>
+                    <p class="version">v1.8.6</p>
+                    <div class="update-section">
+                        <button id="checkUpdates" class="update-btn">
+                            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
+                                <path
+                                    d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3" />
+                            </svg>
+                            <span data-i18n="check_updates">Check for Updates</span>
+                        </button>
+                        <div id="updateStatus" class="update-status"></div>
+                    </div>
                 </div>
 
                 <div class="features-list">
