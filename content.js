@@ -1,8 +1,11 @@
 // Content script - ChatGPT, Gemini, Claude és Grok beszélgetések gyűjtése
 
-// HTML -> Markdown konvertáló segédfüggvény
-function domToMarkdown(node) {
+// HTML -> Markdown konvertáló segédfüggvény (ctx: imagegen csoportonként egy IMG)
+function domToMarkdown(node, ctx) {
     if (!node) return "";
+    if (!ctx) {
+        ctx = { imagegenEmitted: new WeakSet() };
+    }
 
     // Ha szöveges csomópont
     if (node.nodeType === 3) {
@@ -25,7 +28,7 @@ function domToMarkdown(node) {
 
     // Gyerek elemek feldolgozása
     node.childNodes.forEach(child => {
-        content += domToMarkdown(child);
+        content += domToMarkdown(child, ctx);
     });
 
     // Markdown formázás
@@ -67,9 +70,26 @@ function domToMarkdown(node) {
             }
             return `${content}\n`;
         case 'IMG':
-            const alt = node.getAttribute('alt') || 'image';
-            const src = node.getAttribute('src');
+            if (node.getAttribute('aria-hidden') === 'true') {
+                return '';
+            }
+            const imagegenGroup = node.closest('[class*="imagegen-image"]');
+            if (imagegenGroup) {
+                const altTrim = (node.getAttribute('alt') || '').trim();
+                if (!altTrim) {
+                    return '';
+                }
+                if (ctx.imagegenEmitted.has(imagegenGroup)) {
+                    return '';
+                }
+                ctx.imagegenEmitted.add(imagegenGroup);
+            }
+            const alt = (node.getAttribute('alt') || '').trim() || 'image';
+            let src = node.getAttribute('src');
             if (src) {
+                try {
+                    src = new URL(src, window.location.href).href;
+                } catch (_) { /* keep */ }
                 return `\n![${alt}](${src})\n\n`;
             }
             return '';
@@ -121,103 +141,279 @@ function detectPlatform() {
     return null;
 }
 
-// ChatGPT beszélgetés gyűjtése
-function collectChatGPTConversation() {
-    const articles = document.querySelectorAll('article');
+// ChatGPT: tartalom-blokkok egy fordulaton belül (új UI: több [data-message-content], régi: egy .markdown / .whitespace-pre-wrap)
+function chatgptPickContentRoots(turnEl, authorRole, isLegacyArticle) {
+    const byData = turnEl.querySelectorAll('[data-message-content]');
+    let roots = Array.from(byData).filter((el, _i, arr) =>
+        !arr.some((other) => other !== el && other.contains(el))
+    );
+    if (roots.length > 0) {
+        return roots;
+    }
+    const styled = turnEl.querySelector('.markdown, .prose, .whitespace-pre-wrap');
+    if (styled) {
+        return [styled];
+    }
+    if (isLegacyArticle) {
+        if (authorRole === 'user') {
+            const u = turnEl.querySelector('.whitespace-pre-wrap');
+            if (u) return [u];
+        }
+        if (authorRole === 'assistant') {
+            const a = turnEl.querySelector('.markdown');
+            if (a) return [a];
+        }
+    }
+    return [];
+}
 
-    if (articles.length === 0) {
+function chatgptPartHeading(contentNode) {
+    const details = contentNode.closest('details');
+    if (details) {
+        const summary = details.querySelector('summary');
+        if (summary && summary.textContent.trim()) {
+            return summary.textContent.trim().replace(/\s+/g, ' ').slice(0, 160);
+        }
+    }
+    const aria = contentNode.getAttribute('aria-label');
+    if (aria && aria.trim()) {
+        return aria.trim().slice(0, 160);
+    }
+    return null;
+}
+
+function chatgptRoleDisplay(raw) {
+    if (raw === 'user') return 'Felhasználó';
+    if (raw === 'assistant') return 'ChatGPT';
+    if (raw === 'system') return 'Rendszer';
+    if (raw === 'tool') return 'Eszköz';
+    if (raw) return raw.charAt(0).toUpperCase() + raw.slice(1);
+    return 'Ismeretlen';
+}
+
+function chatgptImgEffectiveSize(img) {
+    const wAttr = parseInt(img.getAttribute('width'), 10);
+    const hAttr = parseInt(img.getAttribute('height'), 10);
+    const nw = img.naturalWidth || wAttr || 0;
+    const nh = img.naturalHeight || hAttr || 0;
+    const cw = img.clientWidth || img.width || 0;
+    const ch = img.clientHeight || img.height || 0;
+    const effW = Math.max(nw, cw);
+    const effH = Math.max(nh, ch);
+    const attrsLarge = wAttr >= 50 && hAttr >= 50;
+    const largeEnough = effW >= 50 && effH >= 50;
+    return { largeEnough: largeEnough || attrsLarge, attrsLarge };
+}
+
+/** Estuary / ugyanazon fájl URL-je eltérhet query sorrendben — dedup id= alapján */
+/** A generált kép gyakran NEM a [data-message-author-role] buborékon belül van, hanem testvérként a conversation-turn alatt. */
+function chatgptImageSearchRoot(roleEl, scope) {
+    if (!roleEl || !scope) {
+        return roleEl;
+    }
+    const turn = roleEl.closest('[data-testid^="conversation-turn"]');
+    if (turn && scope.contains(turn)) {
+        return turn;
+    }
+    let n = roleEl.parentElement;
+    while (n && n !== scope && scope.contains(n)) {
+        if (
+            n.querySelector('[class*="imagegen-image"]') ||
+            n.querySelector('img[src*="estuary/content"]')
+        ) {
+            return n;
+        }
+        n = n.parentElement;
+    }
+    return roleEl;
+}
+
+function chatgptEstuaryDedupKey(href) {
+    try {
+        const u = new URL(href, window.location.href);
+        if (u.pathname.includes('estuary') || u.pathname.includes('backend-api')) {
+            const id = u.searchParams.get('id');
+            if (id) {
+                return `${u.origin}${u.pathname}?id=${id}`;
+            }
+        }
+    } catch (_) { /* ignore */ }
+    return href;
+}
+
+function chatgptPickRepresentativeImagegenImg(group) {
+    const imgs = Array.from(group.querySelectorAll('img'));
+    if (imgs.length === 0) {
+        return null;
+    }
+    const scored = imgs.map((img) => {
+        const ariaHidden = img.getAttribute('aria-hidden') === 'true';
+        const alt = (img.getAttribute('alt') || '').trim();
+        const { largeEnough } = chatgptImgEffectiveSize(img);
+        return { img, ariaHidden, alt, largeEnough };
+    });
+    scored.sort((a, b) => {
+        if (a.ariaHidden !== b.ariaHidden) {
+            return a.ariaHidden ? 1 : -1;
+        }
+        if (!!a.alt !== !!b.alt) {
+            return a.alt ? -1 : 1;
+        }
+        if (a.largeEnough !== b.largeEnough) {
+            return a.largeEnough ? -1 : 1;
+        }
+        return 0;
+    });
+    return scored[0].img;
+}
+
+function chatgptCollectImagesMarkdown(container, messageText) {
+    let imageMarkdown = '';
+    const seenSrcs = new Set();
+    const seenEstuaryKeys = new Set();
+
+    function considerAppend(img) {
+        let src = img.getAttribute('src');
+        if (!src) {
+            return;
+        }
+        try {
+            src = new URL(src, window.location.href).href;
+        } catch (_) { /* keep */ }
+        if (seenSrcs.has(src)) {
+            return;
+        }
+        const estKey = chatgptEstuaryDedupKey(src);
+        if (estKey !== src && seenEstuaryKeys.has(estKey)) {
+            return;
+        }
+        const { largeEnough } = chatgptImgEffectiveSize(img);
+        if (!largeEnough || src.includes('avatar') || src.includes('profile')) {
+            return;
+        }
+        if (messageText.includes(src)) {
+            seenSrcs.add(src);
+            seenEstuaryKeys.add(estKey);
+            return;
+        }
+        const alt = (img.getAttribute('alt') || '').trim() || 'image';
+        imageMarkdown += `\n![${alt}](${src})\n\n`;
+        seenSrcs.add(src);
+        seenEstuaryKeys.add(estKey);
+    }
+
+    // Generált kép: több <img> ugyanazzal a src-vel (sharp / blur / háttér) — egy link / csoport
+    container.querySelectorAll('[class*="imagegen-image"]').forEach((group) => {
+        const pick = chatgptPickRepresentativeImagegenImg(group);
+        if (pick) {
+            considerAppend(pick);
+        }
+    });
+
+    container.querySelectorAll('img').forEach((img) => {
+        if (img.closest('[class*="imagegen-image"]')) {
+            return;
+        }
+        considerAppend(img);
+    });
+
+    return imageMarkdown;
+}
+
+// ChatGPT beszélgetés gyűjtése (új DOM: data-message-author-role + data-message-content; régi: article[data-turn])
+function collectChatGPTConversation() {
+    const mainEl = document.querySelector('main#main') || document.querySelector('main');
+    const scope = mainEl || document;
+
+    let roleNodes = Array.from(scope.querySelectorAll('[data-message-author-role]')).filter(
+        (el, _i, arr) => !arr.some((other) => other !== el && other.contains(el))
+    );
+
+    let useLegacyArticle = false;
+    if (roleNodes.length === 0) {
+        const articles = scope.querySelectorAll('article[data-turn]');
+        if (articles.length > 0) {
+            useLegacyArticle = true;
+            roleNodes = Array.from(articles);
+        }
+    }
+
+    if (roleNodes.length === 0) {
+        const testTurns = scope.querySelectorAll('[data-testid^="conversation-turn"]');
+        if (testTurns.length > 0) {
+            roleNodes = Array.from(testTurns);
+        }
+    }
+
+    if (roleNodes.length === 0) {
         return null;
     }
 
     const messages = [];
 
-    articles.forEach((article) => {
-        const turn = article.getAttribute('data-turn');
-        let role = "Ismeretlen";
-        let messageText = "";
-        let messageHtml = "";
+    roleNodes.forEach((turn) => {
+        let el = turn;
+        let authorRole = useLegacyArticle
+            ? el.getAttribute('data-turn')
+            : el.getAttribute('data-message-author-role');
 
-        // Képek keresése az üzenetben (Text után)
-        const images = article.querySelectorAll('img');
-        let imageMarkdown = "";
-        const seenSrcs = new Set();
-
-        images.forEach(img => {
-            const src = img.getAttribute('src');
-            if (src && !seenSrcs.has(src)) {
-                // Szűrjük a profilképeket és egyéb ikonokat (pl. 24x24, avatar)
-                if (img.width < 50 || img.height < 50 || src.includes('avatar') || src.includes('profile')) {
-                    return;
-                }
-
-                // Ellenőrizzük, hogy ez a kép már benne van-e a messageText-ben (ha a markdown konvertálás már megtalálta)
-                if (messageText.includes(src)) {
-                    seenSrcs.add(src);
-                    return;
-                }
-
-                const alt = img.getAttribute('alt') || 'image';
-                imageMarkdown += `\n![${alt}](${src})\n\n`;
-                seenSrcs.add(src);
-            }
-        });
-
-        if (turn === 'user') {
-            role = "Felhasználó";
-            const contentDiv = article.querySelector('.whitespace-pre-wrap');
-            if (contentDiv) {
-                // Próbáljuk meg markdown formátumban, hogy megőrizzük a formázást
-                messageText = domToMarkdown(contentDiv);
-                // Ha üres, akkor sima szöveg
-                if (!messageText.trim()) {
-                    messageText = contentDiv.innerText;
-                }
-                messageHtml = contentDiv.innerHTML;
-            }
-        } else if (turn === 'assistant') {
-            role = "ChatGPT";
-            const contentDiv = article.querySelector('.markdown');
-            if (contentDiv) {
-                // Először az egész markdown div-et konvertáljuk (kezeli a beágyazott tag-eket)
-                messageText = domToMarkdown(contentDiv);
-                // Ha üres, próbáljuk meg más módszerekkel
-                if (!messageText.trim()) {
-                    // Keressük az összes markdown elemet
-                    const markdownElements = contentDiv.querySelectorAll('p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, pre, code');
-                    if (markdownElements.length > 0) {
-                        messageText = '';
-                        markdownElements.forEach(el => {
-                            const converted = domToMarkdown(el);
-                            if (converted.trim()) {
-                                messageText += converted;
-                            }
-                        });
-                    } else {
-                        // Végül: teljes szöveg
-                        messageText = contentDiv.textContent.trim();
-                    }
-                }
-                messageHtml = contentDiv.innerHTML;
+        if (!authorRole && el.matches && el.matches('[data-testid^="conversation-turn"]')) {
+            const inner = el.querySelector('[data-message-author-role]');
+            if (inner) {
+                el = inner;
+                authorRole = inner.getAttribute('data-message-author-role');
             }
         }
 
-        // Képek hozzáadása a szöveghez
+        if (!authorRole) {
+            return;
+        }
+
+        const role = chatgptRoleDisplay(authorRole);
+        let contentRoots = chatgptPickContentRoots(el, authorRole, useLegacyArticle);
+
+        let messageText = '';
+        let messageHtml = '';
+
+        if (contentRoots.length > 0) {
+            contentRoots.forEach((root, idx) => {
+                let piece = domToMarkdown(root);
+                if (!piece.trim()) {
+                    piece = root.innerText || '';
+                }
+                piece = piece.trim();
+                if (!piece) {
+                    return;
+                }
+                if (contentRoots.length > 1) {
+                    const label = chatgptPartHeading(root) || `Rész ${idx + 1}`;
+                    messageText += (messageText ? '\n\n' : '') + `#### ${label}\n\n${piece}`;
+                    messageHtml += (messageHtml ? '<hr/>' : '') + root.outerHTML;
+                } else {
+                    messageText = piece;
+                    messageHtml = root.innerHTML;
+                }
+            });
+        }
+
+        const imageRoot = chatgptImageSearchRoot(el, scope);
+        const imageMarkdown = chatgptCollectImagesMarkdown(imageRoot, messageText);
         if (imageMarkdown) {
-            messageText = messageText ? messageText + "\n" + imageMarkdown : imageMarkdown;
+            messageText = messageText ? messageText + '\n' + imageMarkdown : imageMarkdown.trim();
         }
 
-        // Fallback: ha még mindig nincs szöveg, az egész article-t próbáljuk
         if (!messageText.trim()) {
-            messageText = domToMarkdown(article);
+            messageText = domToMarkdown(el);
             if (!messageText.trim()) {
-                messageText = article.innerText;
+                messageText = el.innerText || '';
             }
-            messageHtml = article.innerHTML;
+            messageHtml = el.innerHTML;
         }
 
         if (messageText.trim()) {
             messages.push({
-                role: role,
+                role,
+                authorRole,
                 text: messageText.trim(),
                 html: messageHtml
             });
@@ -226,7 +422,7 @@ function collectChatGPTConversation() {
 
     return {
         platform: 'ChatGPT',
-        messages: messages
+        messages
     };
 }
 
@@ -713,17 +909,70 @@ function collectConversation() {
         date: date,
         messages: data.messages,
         title: document.title || `${data.platform} Beszélgetés`,
-        platform: data.platform
+        platform: data.platform,
+        sourceUrl: window.location.href
     };
 }
 
-// Üzenet fogadása a popup-tól
+function blobToBase64Data(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
+
+// Popup / DOCX: ChatGPT generált képek (backend-api/estuary) csak bejelentkezési sütikkel tölthetők le —
+// a háttér-szkript fetch() nem küldi ezeket; ugyanazon lap originjén credentials: 'include' kell.
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "collectConversation") {
-        const data = collectConversation();
-        sendResponse(data);
+        sendResponse(collectConversation());
+        return false;
     }
-    return true;
+    if (request.action === "fetchBlobWithCredentials") {
+        (async () => {
+            try {
+                const rawUrl = request.url;
+                if (!rawUrl || typeof rawUrl !== "string") {
+                    sendResponse({ success: false, error: "Invalid URL" });
+                    return;
+                }
+                const u = new URL(rawUrl, window.location.href);
+                if (u.origin !== window.location.origin) {
+                    sendResponse({ success: false, error: "Cross-origin blocked" });
+                    return;
+                }
+                // same-origin + credentials: a böngésző CORS szerint olvasható választ ad (nem opaque)
+                const res = await fetch(u.href, {
+                    credentials: "include",
+                    redirect: "follow",
+                    mode: "cors",
+                    cache: "default",
+                    referrerPolicy: "strict-origin-when-cross-origin"
+                });
+                if (res.type === "opaque" || res.type === "opaqueredirect") {
+                    sendResponse({ success: false, error: "CORS: nem olvasható válasz (opaque)" });
+                    return;
+                }
+                if (!res.ok) {
+                    sendResponse({ success: false, error: `HTTP ${res.status}` });
+                    return;
+                }
+                const blob = await res.blob();
+                const base64Data = await blobToBase64Data(blob);
+                sendResponse({
+                    success: true,
+                    data: base64Data,
+                    mimeType: blob.type || "application/octet-stream"
+                });
+            } catch (e) {
+                sendResponse({ success: false, error: e.message || String(e) });
+            }
+        })();
+        return true;
+    }
+    return false;
 });
 
 const platform = detectPlatform();

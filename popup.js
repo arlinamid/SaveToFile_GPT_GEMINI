@@ -38,7 +38,8 @@ async function getConversationData() {
             showStatusI18n('status_error', 'error');
             return null;
         }
-        return response;
+        // ChatGPT backend-api / estuary képekhez a lap sütije kell — DOCX/MD letöltés a content scriptből
+        return { ...response, __exportTabId: tab.id };
     } catch (error) {
         showStatusI18n('status_error_generic', 'error');
         console.error(error);
@@ -80,10 +81,17 @@ async function exportAsMarkdown() {
     const data = await getConversationData();
     if (!data) return;
 
-    let markdown = `# Mentett ${data.platform || 'AI'} Beszélgetés\n\n**Dátum:** ${data.date}\n\n---\n\n`;
+    let markdown = `# Mentett ${data.platform || 'AI'} Beszélgetés\n\n**Dátum:** ${data.date}\n`;
+    if (data.sourceUrl) {
+        markdown += `**Forrás:** ${data.sourceUrl}\n`;
+    }
+    markdown += `\n---\n\n`;
 
-    data.messages.forEach(msg => {
-        markdown += `### ${msg.role}\n\n${msg.text}\n\n---\n\n`;
+    data.messages.forEach((msg) => {
+        const roleLine = msg.authorRole && msg.authorRole !== 'user' && msg.authorRole !== 'assistant'
+            ? `### ${msg.role} (\`${msg.authorRole}\`)`
+            : `### ${msg.role}`;
+        markdown += `${roleLine}\n\n${msg.text}\n\n---\n\n`;
     });
 
     const filename = generateFilename(data, 'md');
@@ -91,8 +99,53 @@ async function exportAsMarkdown() {
     showStatusI18n('status_success', 'success');
 }
 
+function resolvePotentiallyRelativeUrl(urlStr, baseHref) {
+    try {
+        return new URL(urlStr).href;
+    } catch {
+        if (!baseHref) return urlStr;
+        try {
+            return new URL(urlStr, baseHref).href;
+        } catch {
+            return urlStr;
+        }
+    }
+}
+
+function urlNeedsTabCredentialsForImages(urlStr, baseHref) {
+    try {
+        const u = new URL(resolvePotentiallyRelativeUrl(urlStr, baseHref));
+        const h = u.hostname;
+        return h === 'chatgpt.com' || h === 'chat.openai.com' || h.endsWith('.chatgpt.com');
+    } catch {
+        return false;
+    }
+}
+
+async function bufferToImageResult(arrayBuffer, mimeType) {
+    const blob = new Blob([arrayBuffer], { type: mimeType || 'image/png' });
+    const dimensions = await new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            resolve({ width: img.naturalWidth, height: img.naturalHeight });
+            URL.revokeObjectURL(img.src);
+        };
+        img.onerror = () => {
+            resolve({ width: 400, height: 400 });
+            URL.revokeObjectURL(img.src);
+        };
+        img.src = URL.createObjectURL(blob);
+    });
+    return {
+        buffer: arrayBuffer,
+        width: dimensions.width,
+        height: dimensions.height,
+        mimeType: mimeType || blob.type || 'image/png'
+    };
+}
+
 // Markdown -> DOCX formázás konverter
-async function parseMarkdownToDocx(text) {
+async function parseMarkdownToDocx(text, exportTabId, baseHref) {
     const { Paragraph, TextRun, HeadingLevel, ImageRun } = docx;
     const elements = [];
     const lines = text.split('\n');
@@ -116,7 +169,7 @@ async function parseMarkdownToDocx(text) {
             const imageUrl = imageMatch[2];
 
             try {
-                const imageData = await fetchImage(imageUrl);
+                const imageData = await fetchImage(imageUrl, exportTabId, baseHref);
                 if (imageData && imageData.buffer) {
                     // Képarány megtartása, max szélesség 500px
                     const maxWidth = 500;
@@ -397,14 +450,32 @@ function parseInlineMarkdown(text) {
     return runs;
 }
 
-// Kép letöltése
-// Kép letöltése és méretek lekérése proxy-n keresztül
-async function fetchImage(url) {
+// Kép letöltése: ChatGPT estuary/backend-api URL-ekhez a megnyitott lap content scriptje (credentials: include)
+async function fetchImage(url, exportTabId, baseHref) {
+    const absoluteUrl = resolvePotentiallyRelativeUrl(url, baseHref);
     try {
-        // Üzenet küldése a background scriptnek
+        if (exportTabId != null && urlNeedsTabCredentialsForImages(url, baseHref)) {
+            try {
+                const tabResponse = await chrome.tabs.sendMessage(exportTabId, {
+                    action: 'fetchBlobWithCredentials',
+                    url: absoluteUrl
+                });
+                if (tabResponse && tabResponse.success && tabResponse.data) {
+                    const binaryString = atob(tabResponse.data);
+                    const bytes = new Uint8Array(binaryString.length);
+                    for (let i = 0; i < binaryString.length; i++) {
+                        bytes[i] = binaryString.charCodeAt(i);
+                    }
+                    return await bufferToImageResult(bytes.buffer, tabResponse.mimeType);
+                }
+            } catch (e) {
+                console.warn('[SaveToFile] Tab credential image fetch failed, trying background', e);
+            }
+        }
+
         const response = await chrome.runtime.sendMessage({
             action: 'fetchImage',
-            url: url
+            url: absoluteUrl
         });
 
         if (!response || !response.success || !response.data) {
@@ -412,39 +483,13 @@ async function fetchImage(url) {
             return null;
         }
 
-        // Base64 konvertálása ArrayBuffer-ré
         const binaryString = atob(response.data);
         const len = binaryString.length;
         const bytes = new Uint8Array(len);
         for (let i = 0; i < len; i++) {
             bytes[i] = binaryString.charCodeAt(i);
         }
-        const arrayBuffer = bytes.buffer;
-
-        // Blob létrehozása a méretek meghatározásához
-        const blob = new Blob([arrayBuffer], { type: response.mimeType || 'image/png' });
-
-        // Méretek meghatározása
-        const dimensions = await new Promise((resolve) => {
-            const img = new Image();
-            img.onload = () => {
-                resolve({ width: img.naturalWidth, height: img.naturalHeight });
-                URL.revokeObjectURL(img.src); // Takarítás
-            };
-            img.onerror = () => {
-                resolve({ width: 400, height: 400 }); // Fallback
-                URL.revokeObjectURL(img.src);
-            };
-            // Objektum URL létrehozása a blob-ból
-            const objectUrl = URL.createObjectURL(blob);
-            img.src = objectUrl;
-        });
-
-        return {
-            buffer: arrayBuffer,
-            width: dimensions.width,
-            height: dimensions.height
-        };
+        return await bufferToImageResult(bytes.buffer, response.mimeType);
     } catch (e) {
         console.error("Fetch image error:", e);
         return null;
@@ -470,23 +515,39 @@ async function exportAsDocx() {
             new Paragraph({
                 text: `Dátum: ${data.date}`,
                 alignment: AlignmentType.CENTER,
-                spacing: { after: 400 }
+                spacing: { after: data.sourceUrl ? 100 : 400 }
             }),
         ];
 
-        // Használj for...of loop-ot async/await-hez a forEach helyett
-        for (const msg of data.messages) {
-            // Szerepkör
+        if (data.sourceUrl) {
             children.push(
                 new Paragraph({
-                    text: msg.role,
+                    children: [
+                        new TextRun({ text: 'Forrás: ', bold: true }),
+                        new TextRun({ text: data.sourceUrl })
+                    ],
+                    alignment: AlignmentType.CENTER,
+                    spacing: { after: 400 }
+                })
+            );
+        }
+
+        // Használj for...of loop-ot async/await-hez a forEach helyett
+        for (const msg of data.messages) {
+            const roleHeading =
+                msg.authorRole && msg.authorRole !== 'user' && msg.authorRole !== 'assistant'
+                    ? `${msg.role} (${msg.authorRole})`
+                    : msg.role;
+            children.push(
+                new Paragraph({
+                    text: roleHeading,
                     heading: HeadingLevel.HEADING_2,
                     spacing: { before: 300, after: 200 }
                 })
             );
 
             // Üzenet szöveg - Markdown -> DOCX konverzió (most már async)
-            const parsedElements = await parseMarkdownToDocx(msg.text);
+            const parsedElements = await parseMarkdownToDocx(msg.text, data.__exportTabId, data.sourceUrl);
             children.push(...parsedElements);
 
             // Elválasztó

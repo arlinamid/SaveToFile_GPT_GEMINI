@@ -7,7 +7,7 @@ const translations = {
         tab_about: 'About',
 
         // Export tab
-        title: 'ChatGPT, Gemini & Claude',
+        title: 'ChatGPT, Gemini, Claude & Grok',
         subtitle: 'Conversation Saver Extension',
         info_text: 'Choose the export format',
         filename_label: 'Filename',
@@ -17,10 +17,10 @@ const translations = {
         btn_docx: 'Save as DOCX',
 
         // About tab
-        about_title: 'ChatGPT, Gemini & Claude Saver',
+        about_title: 'ChatGPT, Gemini, Claude & Grok Saver',
         features_title: 'Features',
         feature_1: 'Markdown & DOCX export',
-        feature_2: 'ChatGPT, Gemini & Claude support',
+        feature_2: 'ChatGPT, Gemini, Claude & Grok support',
         feature_3: 'Custom filenames',
         feature_4: 'Timestamp option',
         feature_5: 'Real Word formatting',
@@ -57,16 +57,32 @@ const translations = {
         status_checking: 'Checking for updates...',
         update_available: 'New version available!',
         update_uptodate: 'You are up to date.',
-        update_error: 'Could not check for updates.'
+        update_error: 'Could not check for updates.',
+
+        // Help tab
+        tab_help: 'Help',
+        help_title: 'Help & Usage',
+        help_subtitle: 'Guides and supported platforms',
+        section_platforms: 'Supported Platforms',
+        section_usage: 'How to Use',
+        step_1: 'Open a chat',
+        step_1_desc: 'Navigate to ChatGPT, Gemini, Claude, or Grok.',
+        step_2: 'Open Extension',
+        step_2_desc: 'Click the extension icon in your browser toolbar.',
+        step_3: 'Select Format',
+        step_3_desc: 'Choose Markdown or DOCX export format.',
+        step_4: 'Save',
+        step_4_desc: 'Your conversation will be downloaded instantly.'
     },
     hu: {
         // Tabok
         tab_export: 'Export',
         tab_workflow: 'Workflow',
+        tab_help: 'Segítség',
         tab_about: 'Rólam',
 
         // Export tab
-        title: 'ChatGPT, Gemini és Claude',
+        title: 'ChatGPT, Gemini, Claude és Grok',
         subtitle: 'Beszélgetés mentő bővítmény',
         info_text: 'Válaszd ki a mentési formátumot',
         filename_label: 'Fájlnév',
@@ -76,10 +92,10 @@ const translations = {
         btn_docx: 'Mentés DOCX-ként',
 
         // About tab
-        about_title: 'ChatGPT, Gemini és Claude Mentő',
+        about_title: 'ChatGPT, Gemini, Claude és Grok Mentő',
         features_title: 'Funkciók',
         feature_1: 'Markdown & DOCX export',
-        feature_2: 'ChatGPT, Gemini és Claude támogatás',
+        feature_2: 'ChatGPT, Gemini, Claude és Grok támogatás',
         feature_3: 'Egyedi fájlnevek',
         feature_4: 'Időbélyeg opció',
         feature_5: 'Valódi Word formázás',
@@ -116,7 +132,22 @@ const translations = {
         status_checking: 'Frissítések keresése...',
         update_available: 'Új verzió elérhető!',
         update_uptodate: 'A bővítmény naprakész.',
-        update_error: 'Nem sikerült ellenőrizni a frissítéseket.'
+        update_error: 'Nem sikerült ellenőrizni a frissítéseket.',
+
+        // Help tab
+        tab_help: 'Segítség',
+        help_title: 'Segítség és Használat',
+        help_subtitle: 'Útmutatók és támogatott platformok',
+        section_platforms: 'Támogatott Platformok',
+        section_usage: 'Használat',
+        step_1: 'Nyiss meg egy csevegést',
+        step_1_desc: 'Navigálj a ChatGPT, Gemini, Claude vagy Grok oldalára.',
+        step_2: 'Nyisd meg a bővítményt',
+        step_2_desc: 'Kattints a bővítmény ikonjára a böngésző eszköztárában.',
+        step_3: 'Válassz formátumot',
+        step_3_desc: 'Válaszd ki a Markdown vagy DOCX exportálást.',
+        step_4: 'Mentés',
+        step_4_desc: 'A beszélgetés azonnal letöltésre kerül.'
     }
 };
 
